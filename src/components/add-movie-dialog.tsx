@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
@@ -10,7 +9,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
+import { PLATFORMS, RESOLUTIONS, DEFAULT_RESOLUTION, getPlatform } from "@/lib/platforms";
 
 // ============================================================
 // TYPES
@@ -30,25 +29,11 @@ type PlatformSelection = {
   resolution: string;
 };
 
-const PLATFORMS = [
-  { id: "apple", label: "Apple" },
-  { id: "fandango", label: "Fandango" },
-  { id: "amazon", label: "Amazon" },
-  { id: "movies_anywhere", label: "Movies Anywhere" },
-];
-
-const RESOLUTIONS = ["4K", "HD", "SD"];
-
 // ============================================================
 // COMPONENT
 // ============================================================
 
 export function AddMovieDialog({ onMovieAdded }: { onMovieAdded: () => void }) {
-  // --- State ---
-  // "step" controls which screen the dialog shows:
-  // "search" = typing a movie title
-  // "select" = picking from search results
-  // "platforms" = choosing platforms for the selected movie
   const [step, setStep] = useState<"search" | "select" | "platforms">("search");
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -58,9 +43,6 @@ export function AddMovieDialog({ onMovieAdded }: { onMovieAdded: () => void }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // --- Functions ---
-
-  // Reset everything when the dialog closes
   function resetDialog() {
     setStep("search");
     setQuery("");
@@ -70,7 +52,6 @@ export function AddMovieDialog({ onMovieAdded }: { onMovieAdded: () => void }) {
     setError(null);
   }
 
-  // Search TMDB for movies matching the query
   async function handleSearch() {
     if (!query.trim()) return;
 
@@ -97,25 +78,23 @@ export function AddMovieDialog({ onMovieAdded }: { onMovieAdded: () => void }) {
     }
   }
 
-  // User picked a movie from the search results
   function handleSelectMovie(movie: SearchResult) {
     setSelectedMovie(movie);
     setStep("platforms");
   }
 
-  // Toggle a platform on/off
   function togglePlatform(platformId: string) {
     const existing = platformSelections.find((p) => p.platform === platformId);
     if (existing) {
-      // Remove it
       setPlatformSelections(platformSelections.filter((p) => p.platform !== platformId));
     } else {
-      // Add it with default resolution HD
-      setPlatformSelections([...platformSelections, { platform: platformId, resolution: "HD" }]);
+      setPlatformSelections([
+        ...platformSelections,
+        { platform: platformId, resolution: DEFAULT_RESOLUTION },
+      ]);
     }
   }
 
-  // Change the resolution for a specific platform
   function setResolution(platformId: string, resolution: string) {
     setPlatformSelections(
       platformSelections.map((p) =>
@@ -124,7 +103,6 @@ export function AddMovieDialog({ onMovieAdded }: { onMovieAdded: () => void }) {
     );
   }
 
-  // Save the movie to the collection
   async function handleSave() {
     if (!selectedMovie || platformSelections.length === 0) return;
 
@@ -148,7 +126,6 @@ export function AddMovieDialog({ onMovieAdded }: { onMovieAdded: () => void }) {
         return;
       }
 
-      // Success — close dialog and tell the parent to refresh
       setOpen(false);
       resetDialog();
       onMovieAdded();
@@ -159,8 +136,6 @@ export function AddMovieDialog({ onMovieAdded }: { onMovieAdded: () => void }) {
     }
   }
 
-  // --- Render ---
-
   return (
     <Dialog
       open={open}
@@ -170,12 +145,12 @@ export function AddMovieDialog({ onMovieAdded }: { onMovieAdded: () => void }) {
       }}
     >
       <DialogTrigger asChild>
-        <Button className="w-full">+ Add Movie</Button>
+        <Button className="w-full text-base">+ Add Movie</Button>
       </DialogTrigger>
 
       <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>
+          <DialogTitle className="text-lg">
             {step === "search" && "Search for a Movie"}
             {step === "select" && "Select a Movie"}
             {step === "platforms" && selectedMovie?.title}
@@ -198,11 +173,13 @@ export function AddMovieDialog({ onMovieAdded }: { onMovieAdded: () => void }) {
               }}
               className="flex gap-2"
             >
-              <Input
+              <input
+                type="text"
                 placeholder="Movie title..."
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 autoFocus
+                className="flex-1 rounded-lg border border-input bg-background px-3 py-2.5 text-base text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
               />
               <Button type="submit" disabled={loading || !query.trim()}>
                 {loading ? "..." : "Search"}
@@ -249,7 +226,7 @@ export function AddMovieDialog({ onMovieAdded }: { onMovieAdded: () => void }) {
                       </div>
                     )}
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium leading-tight">
+                      <p className="text-base font-medium leading-tight">
                         {movie.title}
                       </p>
                       <p className="text-sm text-muted-foreground">
@@ -289,7 +266,7 @@ export function AddMovieDialog({ onMovieAdded }: { onMovieAdded: () => void }) {
                 />
               )}
               <div>
-                <p className="font-medium">{selectedMovie.title}</p>
+                <p className="text-base font-medium">{selectedMovie.title}</p>
                 <p className="text-sm text-muted-foreground">
                   {selectedMovie.year}
                 </p>
@@ -313,9 +290,9 @@ export function AddMovieDialog({ onMovieAdded }: { onMovieAdded: () => void }) {
                     <div key={platform.id} className="space-y-1">
                       <button
                         onClick={() => togglePlatform(platform.id)}
-                        className={`w-full rounded-lg border p-3 text-left text-sm transition-colors ${
+                        className={`w-full rounded-lg border p-3 text-left text-sm font-medium transition-colors ${
                           isSelected
-                            ? "border-primary bg-primary/5"
+                            ? `${platform.bgClass} ${platform.textClass} border-transparent`
                             : "hover:bg-accent"
                         }`}
                       >
@@ -325,18 +302,17 @@ export function AddMovieDialog({ onMovieAdded }: { onMovieAdded: () => void }) {
                       {isSelected && (
                         <div className="flex gap-1 pl-3">
                           {RESOLUTIONS.map((res) => (
-                            <Badge
+                            <button
                               key={res}
-                              variant={
-                                selection?.resolution === res
-                                  ? "default"
-                                  : "outline"
-                              }
-                              className="cursor-pointer"
                               onClick={() => setResolution(platform.id, res)}
+                              className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                                selection?.resolution === res
+                                  ? "bg-foreground text-background"
+                                  : "border border-input text-muted-foreground hover:text-foreground"
+                              }`}
                             >
                               {res}
-                            </Badge>
+                            </button>
                           ))}
                         </div>
                       )}
@@ -347,7 +323,7 @@ export function AddMovieDialog({ onMovieAdded }: { onMovieAdded: () => void }) {
             </div>
 
             <Button
-              className="w-full"
+              className="w-full text-base"
               disabled={platformSelections.length === 0 || loading}
               onClick={handleSave}
             >

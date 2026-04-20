@@ -3,13 +3,13 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { PLATFORMS, RESOLUTIONS, DEFAULT_RESOLUTION, getPlatform } from "@/lib/platforms";
 
 // ============================================================
 // TYPES
@@ -52,29 +52,6 @@ type PlatformSelection = {
   resolution: string;
 };
 
-const PLATFORMS = [
-  { id: "apple", label: "Apple" },
-  { id: "fandango", label: "Fandango" },
-  { id: "amazon", label: "Amazon" },
-  { id: "movies_anywhere", label: "Movies Anywhere" },
-];
-
-const PLATFORM_LABELS: Record<string, string> = {
-  apple: "Apple",
-  fandango: "Fandango",
-  amazon: "Amazon",
-  movies_anywhere: "Movies Anywhere",
-};
-
-const PLATFORM_COLORS: Record<string, string> = {
-  apple: "bg-gray-800 text-white",
-  fandango: "bg-green-700 text-white",
-  amazon: "bg-blue-700 text-white",
-  movies_anywhere: "bg-purple-700 text-white",
-};
-
-const RESOLUTIONS = ["4K", "HD", "SD"];
-
 // ============================================================
 // COMPONENT
 // ============================================================
@@ -99,7 +76,6 @@ export function MovieDetailDialog({
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch TMDB data when the dialog opens with a movie
   useEffect(() => {
     if (!movie || !open) return;
 
@@ -111,7 +87,7 @@ export function MovieDetailDialog({
     setPlatformSelections(
       movie.platforms.map((p) => ({
         platform: p.platform,
-        resolution: p.resolution || "HD",
+        resolution: p.resolution || DEFAULT_RESOLUTION,
       }))
     );
 
@@ -124,7 +100,7 @@ export function MovieDetailDialog({
           setTmdbData(data);
         }
       } catch {
-        // Not critical — we still show basic info from our database
+        // Not critical
       } finally {
         setLoading(false);
       }
@@ -134,14 +110,15 @@ export function MovieDetailDialog({
 
   if (!movie) return null;
 
-  // --- Edit functions ---
-
   function togglePlatform(platformId: string) {
     const existing = platformSelections.find((p) => p.platform === platformId);
     if (existing) {
       setPlatformSelections(platformSelections.filter((p) => p.platform !== platformId));
     } else {
-      setPlatformSelections([...platformSelections, { platform: platformId, resolution: "HD" }]);
+      setPlatformSelections([
+        ...platformSelections,
+        { platform: platformId, resolution: DEFAULT_RESOLUTION },
+      ]);
     }
   }
 
@@ -153,7 +130,7 @@ export function MovieDetailDialog({
     );
   }
 
-async function handleSave() {
+  async function handleSave() {
     if (!movie) return;
     if (platformSelections.length === 0) {
       setError("Select at least one platform.");
@@ -188,7 +165,7 @@ async function handleSave() {
     }
   }
 
-async function handleDelete() {
+  async function handleDelete() {
     if (!movie) return;
     setSaving(true);
     try {
@@ -207,13 +184,11 @@ async function handleDelete() {
     }
   }
 
-  // --- Render ---
-
   return (
     <Dialog open={open} onOpenChange={(isOpen) => { if (!isOpen) onClose(); }}>
       <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{movie.title}</DialogTitle>
+          <DialogTitle className="text-lg">{movie.title}</DialogTitle>
         </DialogHeader>
 
         {error && (
@@ -259,11 +234,9 @@ async function handleDelete() {
 
         {/* Overview */}
         {tmdbData?.overview && (
-          <div>
-            <p className="text-sm leading-relaxed text-muted-foreground">
-              {tmdbData.overview}
-            </p>
-          </div>
+          <p className="text-sm leading-relaxed text-muted-foreground">
+            {tmdbData.overview}
+          </p>
         )}
 
         {/* Cast */}
@@ -311,9 +284,9 @@ async function handleDelete() {
                   <div key={platform.id} className="space-y-1">
                     <button
                       onClick={() => togglePlatform(platform.id)}
-                      className={`w-full rounded-lg border p-3 text-left text-sm transition-colors ${
+                      className={`w-full rounded-lg border p-3 text-left text-sm font-medium transition-colors ${
                         isSelected
-                          ? "border-primary bg-primary/5"
+                          ? `${platform.bgClass} ${platform.textClass} border-transparent`
                           : "hover:bg-accent"
                       }`}
                     >
@@ -323,18 +296,17 @@ async function handleDelete() {
                     {isSelected && (
                       <div className="flex gap-1 pl-3">
                         {RESOLUTIONS.map((res) => (
-                          <Badge
+                          <button
                             key={res}
-                            variant={
-                              selection?.resolution === res
-                                ? "default"
-                                : "outline"
-                            }
-                            className="cursor-pointer"
                             onClick={() => setResolution(platform.id, res)}
+                            className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                              selection?.resolution === res
+                                ? "bg-foreground text-background"
+                                : "border border-input text-muted-foreground hover:text-foreground"
+                            }`}
                           >
                             {res}
-                          </Badge>
+                          </button>
                         ))}
                       </div>
                     )}
@@ -345,10 +317,12 @@ async function handleDelete() {
               {/* Notes field */}
               <div>
                 <p className="mb-1 text-sm font-medium">Notes</p>
-                <Input
+                <input
+                  type="text"
                   placeholder="e.g., Director's cut, Extended edition..."
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
+                  className="w-full rounded-lg border border-input bg-background px-3 py-2.5 text-base text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                 />
               </div>
 
@@ -367,7 +341,7 @@ async function handleDelete() {
                     setPlatformSelections(
                       movie.platforms.map((p) => ({
                         platform: p.platform,
-                        resolution: p.resolution || "HD",
+                        resolution: p.resolution || DEFAULT_RESOLUTION,
                       }))
                     );
                     setNotes(movie.notes || "");
@@ -378,23 +352,28 @@ async function handleDelete() {
               </div>
             </div>
           ) : (
-            <div className="space-y-1">
-              {movie.platforms.map((p) => (
-                <div key={p.id} className="flex items-center gap-2">
-                  <span
-                    className={`inline-block rounded px-2 py-0.5 text-xs ${
-                      PLATFORM_COLORS[p.platform] || "bg-gray-500 text-white"
-                    }`}
-                  >
-                    {PLATFORM_LABELS[p.platform] || p.platform}
-                  </span>
-                  {p.resolution && (
-                    <span className="text-xs text-muted-foreground">
-                      {p.resolution}
+            <div className="space-y-1.5">
+              {movie.platforms.map((p) => {
+                const config = getPlatform(p.platform);
+                return (
+                  <div key={p.id} className="flex items-center gap-2">
+                    <span
+                      className={`inline-block rounded px-2.5 py-1 text-xs font-medium ${
+                        config
+                          ? `${config.bgClass} ${config.textClass}`
+                          : "bg-gray-500 text-white"
+                      }`}
+                    >
+                      {config?.label || p.platform}
                     </span>
-                  )}
-                </div>
-              ))}
+                    {p.resolution && (
+                      <span className="text-sm text-muted-foreground">
+                        {p.resolution}
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
               {movie.notes && (
                 <p className="mt-2 text-sm text-muted-foreground">
                   {movie.notes}

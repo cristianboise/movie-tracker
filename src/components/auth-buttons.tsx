@@ -1,15 +1,13 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { signIn, signOut } from "next-auth/react";
 
 export function SignInButton() {
   return (
     <Button
       className="w-full"
-      onClick={() => {
-        // Redirect to the Auth.js sign-in page
-        window.location.href = "/api/auth/signin";
-      }}
+      onClick={() => signIn("google", { callbackUrl: "/" })}
     >
       Sign in with Google
     </Button>
@@ -21,9 +19,7 @@ export function SignOutButton() {
     <Button
       variant="ghost"
       size="sm"
-      onClick={() => {
-        window.location.href = "/api/auth/signout";
-      }}
+      onClick={() => signOut({ callbackUrl: "/" })}
     >
       Sign out
     </Button>

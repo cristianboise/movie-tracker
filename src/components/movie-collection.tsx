@@ -1,8 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
+import { PLATFORMS, getPlatform } from "@/lib/platforms";
 
 // ============================================================
 // TYPES
@@ -27,19 +26,7 @@ type Movie = {
   platforms: Platform[];
 };
 
-const PLATFORM_LABELS: Record<string, string> = {
-  apple: "Apple",
-  fandango: "Fandango",
-  amazon: "Amazon",
-  movies_anywhere: "Movies Anywhere",
-};
-
-const PLATFORM_COLORS: Record<string, string> = {
-  apple: "bg-gray-800 text-white",
-  fandango: "bg-green-700 text-white",
-  amazon: "bg-blue-700 text-white",
-  movies_anywhere: "bg-purple-700 text-white",
-};
+type SortOption = "title" | "added" | "year";
 
 // ============================================================
 // COMPONENT
@@ -56,10 +43,8 @@ export function MovieCollection({
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [platformFilter, setPlatformFilter] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState<SortOption>("title");
 
-  // Fetch movies whenever the component mounts or refreshKey changes.
-  // refreshKey is a number that the parent increments when a new
-  // movie is added, which triggers a re-fetch.
   useEffect(() => {
     async function fetchMovies() {
       setLoading(true);
@@ -76,7 +61,7 @@ export function MovieCollection({
     fetchMovies();
   }, [refreshKey]);
 
-  // Filter movies by search text and platform
+  // Filter
   const filtered = movies.filter((movie) => {
     const matchesSearch =
       !search ||
@@ -89,92 +74,150 @@ export function MovieCollection({
     return matchesSearch && matchesPlatform;
   });
 
+  // Sort
+  const sorted = [...filtered].sort((a, b) => {
+    switch (sortBy) {
+      case "title":
+        return a.title.localeCompare(b.title);
+      case "added":
+        return new Date(b.addedAt).getTime() - new Date(a.addedAt).getTime();
+      case "year":
+        return (b.year ?? 0) - (a.year ?? 0);
+      default:
+        return 0;
+    }
+  });
+
   if (loading) {
     return (
-      <p className="mt-6 text-center text-sm text-muted-foreground">
+      <p className="mt-8 text-center text-base text-muted-foreground">
         Loading...
       </p>
     );
   }
 
   return (
-    <div className="mt-4 space-y-4">
+    <div className="mt-6 space-y-5">
       {/* Search bar */}
-      <Input
+      <input
+        type="text"
         placeholder="Search your collection..."
         value={search}
         onChange={(e) => setSearch(e.target.value)}
+        className="w-full rounded-lg border border-input bg-background px-4 py-3 text-base text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
       />
 
-      {/* Platform filter tabs */}
+      {/* Sort + filter row */}
+      <div className="flex flex-wrap items-center gap-3">
+        {/* Sort controls */}
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium text-muted-foreground">Sort:</span>
+          {(
+            [
+              { value: "title", label: "A–Z" },
+              { value: "added", label: "Recent" },
+              { value: "year", label: "Year" },
+            ] as { value: SortOption; label: string }[]
+          ).map((option) => (
+            <button
+              key={option.value}
+              onClick={() => setSortBy(option.value)}
+              className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                sortBy === option.value
+                  ? "bg-foreground text-background"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Platform filter pills */}
       <div className="flex flex-wrap gap-2">
-        <Badge
-          variant={platformFilter === null ? "default" : "outline"}
-          className="cursor-pointer"
+        <button
           onClick={() => setPlatformFilter(null)}
+          className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
+            platformFilter === null
+              ? "bg-foreground text-background"
+              : "border border-input text-foreground hover:bg-accent"
+          }`}
         >
           All ({movies.length})
-        </Badge>
-        {Object.entries(PLATFORM_LABELS).map(([id, label]) => {
+        </button>
+        {PLATFORMS.map((platform) => {
           const count = movies.filter((m) =>
-            m.platforms.some((p) => p.platform === id)
+            m.platforms.some((p) => p.platform === platform.id)
           ).length;
           if (count === 0) return null;
           return (
-            <Badge
-              key={id}
-              variant={platformFilter === id ? "default" : "outline"}
-              className="cursor-pointer"
+            <button
+              key={platform.id}
               onClick={() =>
-                setPlatformFilter(platformFilter === id ? null : id)
+                setPlatformFilter(
+                  platformFilter === platform.id ? null : platform.id
+                )
               }
+              className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
+                platformFilter === platform.id
+                  ? `${platform.bgClass} ${platform.textClass}`
+                  : `border border-input text-foreground hover:bg-accent`
+              }`}
             >
-              {label} ({count})
-            </Badge>
+              {platform.label} ({count})
+            </button>
           );
         })}
       </div>
 
       {/* Movie grid */}
-      {filtered.length === 0 ? (
-        <p className="text-center text-sm text-muted-foreground">
+      {sorted.length === 0 ? (
+        <p className="text-center text-base text-muted-foreground">
           {movies.length === 0
             ? "Your collection is empty. Add your first movie!"
             : "No movies match your filters."}
         </p>
       ) : (
-        <div className="grid grid-cols-3 gap-3">
-          {filtered.map((movie) => (
+ <div className="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+          {sorted.map((movie) => (
             <button
               key={movie.id}
               onClick={() => onMovieClick(movie)}
-              className="group text-left"
+              className="group flex h-full flex-col text-left"
             >
-              {movie.posterUrl ? (
-                <img
-                  src={movie.posterUrl}
-                  alt={movie.title}
-                  className="w-full rounded-lg shadow-md transition-transform group-hover:scale-105"
-                />
-              ) : (
-                <div className="flex aspect-[2/3] w-full items-center justify-center rounded-lg bg-muted p-2 text-center text-xs text-muted-foreground">
-                  {movie.title}
-                </div>
-              )}
-              <p className="mt-1 truncate text-xs font-medium">
+              <div className="relative w-full flex-shrink-0 overflow-hidden rounded-lg shadow-md" style={{ aspectRatio: "2/3" }}>
+                {movie.posterUrl ? (
+                  <img
+                    src={movie.posterUrl}
+                    alt={movie.title}
+                    className="absolute inset-0 h-full w-full object-cover transition-transform group-hover:scale-105"
+                  />
+                ) : (
+                  <div className="absolute inset-0 flex items-center justify-center bg-muted p-2 text-center text-sm text-muted-foreground">
+                    {movie.title}
+                  </div>
+                )}
+              </div>
+              <p className="mt-2 truncate text-sm font-semibold">
                 {movie.title}
               </p>
-              <div className="mt-0.5 flex flex-wrap gap-0.5">
-                {movie.platforms.map((p) => (
-                  <span
-                    key={p.id}
-                    className={`inline-block rounded px-1 text-[10px] ${
-                      PLATFORM_COLORS[p.platform] || "bg-gray-500 text-white"
-                    }`}
-                  >
-                    {PLATFORM_LABELS[p.platform] || p.platform}
-                  </span>
-                ))}
+              <div className="mt-1 flex flex-wrap gap-1">
+                {movie.platforms.map((p) => {
+                  const config = getPlatform(p.platform);
+                  return (
+                    <span
+                      key={p.id}
+                      className={`inline-block rounded px-2 py-0.5 text-xs font-medium ${
+                        config
+                          ? `${config.bgClass} ${config.textClass}`
+                          : "bg-gray-500 text-white"
+                      }`}
+                    >
+                      {config?.label || p.platform}
+                    </span>
+                  );
+                })}
               </div>
             </button>
           ))}
