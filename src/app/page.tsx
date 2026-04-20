@@ -1,59 +1,25 @@
-"use client";
+import { auth } from "@/lib/auth";
+import { SignedInHome } from "@/components/signed-in-home";
+import { SignInButton } from "@/components/auth-buttons";
 
-import { useState } from "react";
-import { AddMovieDialog } from "@/components/add-movie-dialog";
-import { MovieCollection } from "@/components/movie-collection";
-import { MovieDetailDialog } from "@/components/movie-detail-dialog";
+export default async function Home() {
+  const session = await auth();
 
-type Movie = {
-  id: number;
-  tmdbId: number;
-  title: string;
-  year: number | null;
-  runtime: number | null;
-  posterUrl: string | null;
-  notes: string | null;
-  addedAt: string;
-  platforms: {
-    id: number;
-    platform: string;
-    resolution: string | null;
-    notes: string | null;
-  }[];
-};
-
-export default function Home() {
-  const [refreshKey, setRefreshKey] = useState(0);
-  const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
-
-  return (
-    <main className="min-h-screen bg-background text-foreground">
-      <div className="mx-auto max-w-md px-4 py-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold">Movie Tracker</h1>
+  if (!session?.user) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-background text-foreground">
+        <div className="mx-auto max-w-sm px-4 text-center">
+          <h1 className="text-3xl font-bold">Movie Tracker</h1>
+          <p className="mt-2 text-muted-foreground">
+            Track your digital movie collection across platforms.
+          </p>
+          <div className="mt-6">
+            <SignInButton />
+          </div>
         </div>
+      </main>
+    );
+  }
 
-        <div className="mt-4">
-          <AddMovieDialog
-            onMovieAdded={() => setRefreshKey((k) => k + 1)}
-          />
-        </div>
-
-        <MovieCollection
-          refreshKey={refreshKey}
-          onMovieClick={(movie) => setSelectedMovie(movie)}
-        />
-
-        <MovieDetailDialog
-          movie={selectedMovie}
-          open={selectedMovie !== null}
-          onClose={() => setSelectedMovie(null)}
-          onMovieChanged={() => {
-            setRefreshKey((k) => k + 1);
-            setSelectedMovie(null);
-          }}
-        />
-      </div>
-    </main>
-  );
+  return <SignedInHome user={session.user} />;
 }

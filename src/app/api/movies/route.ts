@@ -1,28 +1,24 @@
 import { db } from "@/db";
 import { movies, moviePlatforms } from "@/db/schema";
 import { getCachedMovieData } from "@/lib/tmdb";
+import { getAuthenticatedUserId } from "@/lib/get-user";
 import { eq, desc } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
-// Temporary hardcoded user ID until we add auth in Phase 5.
-// Every movie added right now will belong to this fake user.
-const TEMP_USER_ID = "temp-user-1";
-
-// Valid platforms — if someone tries to add a platform not in
-// this list, we reject it. This is the "validate in app code"
-// approach mentioned in the schema comments.
 const VALID_PLATFORMS = ["apple", "fandango", "amazon", "movies_anywhere"];
 const VALID_RESOLUTIONS = ["4K", "HD", "SD"];
 
 // ===================
 // POST /api/movies
-// Add a movie to the collection
 // ===================
 export async function POST(request: NextRequest) {
+  const userId = await getAuthenticatedUserId();
+  if (!userId) {
+    return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+  }
+
   try {
     const body = await request.json();
-
-    // --- Validate input ---
     const { tmdbId, platforms } = body;
 
     if (!tmdbId || typeof tmdbId !== "number") {
@@ -39,7 +35,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate each platform entry
     for (const p of platforms) {
       if (!VALID_PLATFORMS.includes(p.platform)) {
         return NextResponse.json(
@@ -55,28 +50,25 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // --- Fetch movie data from TMDB (uses cache) ---
     const tmdbData = await getCachedMovieData(tmdbId);
 
-    // --- Check for duplicate ---
     const existing = await db
       .select()
       .from(movies)
       .where(eq(movies.tmdbId, tmdbId))
       .limit(1);
 
-    if (existing.length > 0 && existing[0].userId === TEMP_USER_ID) {
+    if (existing.length > 0 && existing[0].userId === userId) {
       return NextResponse.json(
         { error: "This movie is already in your collection" },
-        { status: 409 } // 409 = Conflict
+        { status: 409 }
       );
     }
 
-    // --- Insert the movie ---
     const [newMovie] = await db
       .insert(movies)
       .values({
-        userId: TEMP_USER_ID,
+        userId,
         tmdbId,
         title: tmdbData.title,
         year: tmdbData.year ? parseInt(tmdbData.year) : null,
@@ -84,9 +76,8 @@ export async function POST(request: NextRequest) {
         posterUrl: tmdbData.posterUrl,
         tmdbMetadataJson: JSON.stringify(tmdbData),
       })
-      .returning(); // .returning() gives us back the inserted row
+      .returning();
 
-    // --- Insert platform tags ---
     const platformRows = platforms.map((p: { platform: string; resolution?: string; notes?: string }) => ({
       movieId: newMovie.id,
       platform: p.platform,
@@ -96,7 +87,6 @@ export async function POST(request: NextRequest) {
 
     await db.insert(moviePlatforms).values(platformRows);
 
-    // --- Return the complete movie with platforms ---
     return NextResponse.json({
       message: "Movie added to collection",
       movie: {
@@ -108,7 +98,7 @@ export async function POST(request: NextRequest) {
         posterUrl: newMovie.posterUrl,
         platforms: platforms,
       },
-    }, { status: 201 }); // 201 = Created
+    }, { status: 201 });
 
   } catch (error) {
     return NextResponse.json(
@@ -120,20 +110,22 @@ export async function POST(request: NextRequest) {
 
 // ===================
 // GET /api/movies
-// List all movies in the collection
 // ===================
 export async function GET(request: NextRequest) {
+  const userId = await getAuthenticatedUserId();
+  if (!userId) {
+    return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+  }
+
   try {
     const platformFilter = request.nextUrl.searchParams.get("platform");
 
-    // Get all movies for the current user, newest first
     let userMovies = await db
       .select()
       .from(movies)
-      .where(eq(movies.userId, TEMP_USER_ID))
+      .where(eq(movies.userId, userId))
       .orderBy(desc(movies.addedAt));
 
-    // For each movie, get its platform tags
     const moviesWithPlatforms = await Promise.all(
       userMovies.map(async (movie) => {
         const platforms = await db
@@ -160,7 +152,6 @@ export async function GET(request: NextRequest) {
       })
     );
 
-    // If a platform filter was provided, only return movies on that platform
     const filtered = platformFilter
       ? moviesWithPlatforms.filter((m) =>
           m.platforms.some((p) => p.platform === platformFilter)
