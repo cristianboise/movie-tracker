@@ -3,6 +3,12 @@
 import { useState, useEffect } from "react";
 import { PLATFORMS, getPlatform } from "@/lib/platforms";
 import { PlatformLogo } from "@/components/platform-logos";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 // ============================================================
 // TYPES
@@ -27,7 +33,15 @@ type Movie = {
   platforms: Platform[];
 };
 
-type SortOption = "title" | "added" | "year";
+type SortOption = "title-asc" | "title-desc" | "added" | "year-desc" | "year-asc";
+
+const SORT_OPTIONS: { value: SortOption; label: string }[] = [
+  { value: "title-asc", label: "A–Z" },
+  { value: "title-desc", label: "Z–A" },
+  { value: "added", label: "Recently Added" },
+  { value: "year-desc", label: "Release Date ↓" },
+  { value: "year-asc", label: "Release Date ↑" },
+];
 
 // ============================================================
 // COMPONENT
@@ -44,7 +58,9 @@ export function MovieCollection({
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [platformFilter, setPlatformFilter] = useState<string | null>(null);
-  const [sortBy, setSortBy] = useState<SortOption>("title");
+  const [sortBy, setSortBy] = useState<SortOption>("title-asc");
+
+  const currentSortLabel = SORT_OPTIONS.find((o) => o.value === sortBy)?.label ?? "A–Z";
 
   useEffect(() => {
     async function fetchMovies() {
@@ -78,12 +94,16 @@ export function MovieCollection({
   // Sort
   const sorted = [...filtered].sort((a, b) => {
     switch (sortBy) {
-      case "title":
+      case "title-asc":
         return a.title.localeCompare(b.title);
+      case "title-desc":
+        return b.title.localeCompare(a.title);
       case "added":
         return new Date(b.addedAt).getTime() - new Date(a.addedAt).getTime();
-      case "year":
+      case "year-desc":
         return (b.year ?? 0) - (a.year ?? 0);
+      case "year-asc":
+        return (a.year ?? 0) - (b.year ?? 0);
       default:
         return 0;
     }
@@ -99,37 +119,59 @@ export function MovieCollection({
 
   return (
     <div className="mt-4 space-y-4">
-      {/* Search bar */}
-      <input
-        type="text"
-        placeholder="Search your collection..."
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        className="w-full rounded-lg border border-input bg-background px-3 py-2.5 text-base text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-      />
-
-      {/* Sort controls */}
-      <div className="flex items-center gap-2 text-sm">
-        <span className="text-muted-foreground">Sort:</span>
-        {(
-          [
-            { value: "title", label: "A–Z" },
-            { value: "added", label: "Recent" },
-            { value: "year", label: "Year" },
-          ] as { value: SortOption; label: string }[]
-        ).map((option) => (
-          <button
-            key={option.value}
-            onClick={() => setSortBy(option.value)}
-            className={`rounded-md px-2.5 py-1 text-sm font-medium transition-colors ${
-              sortBy === option.value
-                ? "bg-foreground text-background"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            {option.label}
-          </button>
-        ))}
+      {/* Search bar + sort dropdown */}
+      <div className="flex items-center gap-3">
+        <input
+          type="text"
+          placeholder="Search your collection..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="flex-1 rounded-lg border border-input bg-background px-4 py-3 text-base text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+        />
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button className="flex items-center gap-1.5 whitespace-nowrap rounded-lg border border-input px-4 py-3 text-sm font-medium text-foreground hover:bg-accent transition-colors">
+              {currentSortLabel}
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {SORT_OPTIONS.map((option) => (
+              <DropdownMenuItem
+                key={option.value}
+                onClick={() => setSortBy(option.value)}
+                className="flex items-center justify-between"
+              >
+                <span>{option.label}</span>
+                {sortBy === option.value && (
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                )}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {/* Platform filter pills — now with logos */}
