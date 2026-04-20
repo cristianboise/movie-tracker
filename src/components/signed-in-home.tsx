@@ -4,8 +4,7 @@ import { useState } from "react";
 import { AddMovieDialog } from "@/components/add-movie-dialog";
 import { MovieCollection } from "@/components/movie-collection";
 import { MovieDetailDialog } from "@/components/movie-detail-dialog";
-import { SignOutButton } from "@/components/auth-buttons";
-import { ThemeToggle } from "@/components/theme-toggle";
+import { HamburgerMenu } from "@/components/hamburger-menu";
 
 type Movie = {
   id: number;
@@ -40,13 +39,7 @@ export function SignedInHome({ user }: { user: User }) {
       <div className="mx-auto max-w-7xl px-4 py-6">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold">Movie Tracker</h1>
-          <div className="flex items-center gap-1">
-            <span className="text-sm text-muted-foreground">
-              {user.name?.split(" ")[0]}
-            </span>
-            <ThemeToggle />
-            <SignOutButton />
-          </div>
+          <HamburgerMenu user={user} />
         </div>
 
         <div className="mt-4">

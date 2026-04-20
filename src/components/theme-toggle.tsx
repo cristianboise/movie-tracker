@@ -1,12 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
 
 export function ThemeToggle() {
   const [dark, setDark] = useState(false);
 
-  // On mount, check if the user previously chose dark mode
   useEffect(() => {
     const stored = localStorage.getItem("theme");
     const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
@@ -23,8 +21,12 @@ export function ThemeToggle() {
   }
 
   return (
-    <Button variant="ghost" size="sm" onClick={toggle} aria-label="Toggle theme">
-      {dark ? "☀️" : "🌙"}
-    </Button>
+    <button
+      onClick={toggle}
+      className="flex w-full items-center justify-between rounded-sm px-2 py-1.5 text-sm"
+    >
+      <span>{dark ? "Light mode" : "Dark mode"}</span>
+      <span>{dark ? "☀️" : "🌙"}</span>
+    </button>
   );
 }

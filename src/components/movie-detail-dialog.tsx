@@ -188,7 +188,7 @@ export function MovieDetailDialog({
     <Dialog open={open} onOpenChange={(isOpen) => { if (!isOpen) onClose(); }}>
       <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-lg">{movie.title}</DialogTitle>
+          <DialogTitle className="text-xl">{movie.title}</DialogTitle>
         </DialogHeader>
 
         {error && (
@@ -207,11 +207,11 @@ export function MovieDetailDialog({
             />
           )}
           <div className="flex-1 space-y-1">
-            <p className="text-sm text-muted-foreground">
+            <p className="text-base text-muted-foreground">
               {movie.year}{movie.runtime ? ` · ${movie.runtime} min` : ""}
             </p>
             {tmdbData?.tagline && (
-              <p className="text-sm italic text-muted-foreground">
+              <p className="text-base italic text-muted-foreground">
                 &ldquo;{tmdbData.tagline}&rdquo;
               </p>
             )}
@@ -234,7 +234,7 @@ export function MovieDetailDialog({
 
         {/* Overview */}
         {tmdbData?.overview && (
-          <p className="text-sm leading-relaxed text-muted-foreground">
+          <p className="text-base leading-relaxed text-muted-foreground">
             {tmdbData.overview}
           </p>
         )}
@@ -242,10 +242,10 @@ export function MovieDetailDialog({
         {/* Cast */}
         {tmdbData?.cast && tmdbData.cast.length > 0 && (
           <div>
-            <p className="mb-1 text-sm font-medium">Cast</p>
+            <p className="mb-1 text-base font-medium">Cast</p>
             <div className="space-y-0.5">
               {tmdbData.cast.map((member) => (
-                <p key={member.name} className="text-sm text-muted-foreground">
+                <p key={member.name} className="text-base text-muted-foreground">
                   <span className="font-medium text-foreground">{member.name}</span>
                   {" as "}
                   {member.character}
