@@ -10,6 +10,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { PLATFORMS, RESOLUTIONS, DEFAULT_RESOLUTION, getPlatform } from "@/lib/platforms";
+import { PlatformLogo } from "@/components/platform-logos";
 
 // ============================================================
 // TYPES
@@ -243,7 +244,7 @@ export function AddMovieDialog({ onMovieAdded }: { onMovieAdded: () => void }) {
           </div>
         )}
 
-        {/* STEP 3: Choose platforms */}
+        {/* STEP 3: Choose platforms — now with logos */}
         {step === "platforms" && selectedMovie && (
           <div className="space-y-4">
             <Button
@@ -290,12 +291,16 @@ export function AddMovieDialog({ onMovieAdded }: { onMovieAdded: () => void }) {
                     <div key={platform.id} className="space-y-1">
                       <button
                         onClick={() => togglePlatform(platform.id)}
-                        className={`w-full rounded-lg border p-3 text-left text-sm font-medium transition-colors ${
+                        className={`flex w-full items-center gap-3 rounded-lg border p-3 text-left text-sm font-medium transition-colors ${
                           isSelected
                             ? `${platform.bgClass} ${platform.textClass} border-transparent`
                             : "hover:bg-accent"
                         }`}
                       >
+                        <PlatformLogo
+                          platformId={platform.id}
+                          className="h-5 w-5 shrink-0"
+                        />
                         {platform.label}
                       </button>
 

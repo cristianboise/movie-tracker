@@ -10,6 +10,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { PLATFORMS, RESOLUTIONS, DEFAULT_RESOLUTION, getPlatform } from "@/lib/platforms";
+import { PlatformLogo } from "@/components/platform-logos";
 
 // ============================================================
 // TYPES
@@ -188,7 +189,7 @@ export function MovieDetailDialog({
     <Dialog open={open} onOpenChange={(isOpen) => { if (!isOpen) onClose(); }}>
       <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-xl">{movie.title}</DialogTitle>
+          <DialogTitle className="text-lg">{movie.title}</DialogTitle>
         </DialogHeader>
 
         {error && (
@@ -207,11 +208,11 @@ export function MovieDetailDialog({
             />
           )}
           <div className="flex-1 space-y-1">
-            <p className="text-base text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
               {movie.year}{movie.runtime ? ` · ${movie.runtime} min` : ""}
             </p>
             {tmdbData?.tagline && (
-              <p className="text-base italic text-muted-foreground">
+              <p className="text-sm italic text-muted-foreground">
                 &ldquo;{tmdbData.tagline}&rdquo;
               </p>
             )}
@@ -234,7 +235,7 @@ export function MovieDetailDialog({
 
         {/* Overview */}
         {tmdbData?.overview && (
-          <p className="text-base leading-relaxed text-muted-foreground">
+          <p className="text-sm leading-relaxed text-muted-foreground">
             {tmdbData.overview}
           </p>
         )}
@@ -242,10 +243,10 @@ export function MovieDetailDialog({
         {/* Cast */}
         {tmdbData?.cast && tmdbData.cast.length > 0 && (
           <div>
-            <p className="mb-1 text-base font-medium">Cast</p>
+            <p className="mb-1 text-sm font-medium">Cast</p>
             <div className="space-y-0.5">
               {tmdbData.cast.map((member) => (
-                <p key={member.name} className="text-base text-muted-foreground">
+                <p key={member.name} className="text-sm text-muted-foreground">
                   <span className="font-medium text-foreground">{member.name}</span>
                   {" as "}
                   {member.character}
@@ -284,12 +285,16 @@ export function MovieDetailDialog({
                   <div key={platform.id} className="space-y-1">
                     <button
                       onClick={() => togglePlatform(platform.id)}
-                      className={`w-full rounded-lg border p-3 text-left text-sm font-medium transition-colors ${
+                      className={`flex w-full items-center gap-3 rounded-lg border p-3 text-left text-sm font-medium transition-colors ${
                         isSelected
                           ? `${platform.bgClass} ${platform.textClass} border-transparent`
                           : "hover:bg-accent"
                       }`}
                     >
+                      <PlatformLogo
+                        platformId={platform.id}
+                        className="h-5 w-5 shrink-0"
+                      />
                       {platform.label}
                     </button>
 
@@ -358,12 +363,16 @@ export function MovieDetailDialog({
                 return (
                   <div key={p.id} className="flex items-center gap-2">
                     <span
-                      className={`inline-block rounded px-2.5 py-1 text-xs font-medium ${
+                      className={`inline-flex items-center gap-1.5 rounded px-2.5 py-1 text-xs font-medium ${
                         config
                           ? `${config.bgClass} ${config.textClass}`
                           : "bg-gray-500 text-white"
                       }`}
                     >
+                      <PlatformLogo
+                        platformId={p.platform}
+                        className="h-3.5 w-3.5 shrink-0"
+                      />
                       {config?.label || p.platform}
                     </span>
                     {p.resolution && (
