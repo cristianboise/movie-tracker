@@ -4,7 +4,7 @@
 //
 // Apple: apple silhouette (from uploaded SVG). Uses currentColor.
 // Fandango: ticket/stamp mark (from uploaded SVG). Brand orange + blue.
-// Amazon: smile arrow. Brand orange (#FF9900).
+// Prime Video: play triangle on blue rounded square. Brand blue (#0779FF).
 // Movies Anywhere: "MA" lettermark. Brand blue (#1E3A5F).
 
 type LogoProps = {
@@ -49,25 +49,16 @@ export function FandangoLogo({ className }: LogoProps) {
 }
 
 export function AmazonLogo({ className }: LogoProps) {
-  // Amazon smile arrow — the most recognizable part of the Prime Video brand.
+  // Prime Video 2024 icon — play triangle on rounded blue square.
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 100 60"
+      viewBox="0 0 32 32"
       className={className}
       aria-hidden="true"
     >
-      {/* Play button triangle */}
-      <path d="M25 8 L75 30 L25 52 Z" fill="#00A8E1" />
-      {/* Smile arrow */}
-      <path
-        d="M15 50 Q50 65 85 50"
-        stroke="#FF9900"
-        strokeWidth="4"
-        fill="none"
-        strokeLinecap="round"
-      />
-      <path d="M82 44 L88 51 L80 54" fill="#FF9900" />
+      <rect width="32" height="32" rx="6" fill="#0779FF" />
+      <path d="M12 8.5 L24 16 L12 23.5 Z" fill="white" />
     </svg>
   );
 }
