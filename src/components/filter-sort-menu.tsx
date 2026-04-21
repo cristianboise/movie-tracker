@@ -13,6 +13,7 @@ import {
 // ============================================================
 
 export type SortOption = "title-asc" | "title-desc" | "added" | "year-desc" | "year-asc";
+export type ViewMode = "grid" | "compact" | "list";
 
 const SORT_OPTIONS: { value: SortOption; label: string }[] = [
   { value: "title-asc", label: "A\u2013Z" },
@@ -20,6 +21,56 @@ const SORT_OPTIONS: { value: SortOption; label: string }[] = [
   { value: "added", label: "Recently Added" },
   { value: "year-desc", label: "Newest First" },
   { value: "year-asc", label: "Oldest First" },
+];
+
+// SVG icons for view modes
+function GridIcon({ active }: { active: boolean }) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth={active ? "2.5" : "2"} strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="7" height="7" />
+      <rect x="14" y="3" width="7" height="7" />
+      <rect x="3" y="14" width="7" height="7" />
+      <rect x="14" y="14" width="7" height="7" />
+    </svg>
+  );
+}
+
+function CompactIcon({ active }: { active: boolean }) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth={active ? "2.5" : "2"} strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="4" height="4" />
+      <rect x="10" y="3" width="4" height="4" />
+      <rect x="17" y="3" width="4" height="4" />
+      <rect x="3" y="10" width="4" height="4" />
+      <rect x="10" y="10" width="4" height="4" />
+      <rect x="17" y="10" width="4" height="4" />
+      <rect x="3" y="17" width="4" height="4" />
+      <rect x="10" y="17" width="4" height="4" />
+      <rect x="17" y="17" width="4" height="4" />
+    </svg>
+  );
+}
+
+function ListIcon({ active }: { active: boolean }) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth={active ? "2.5" : "2"} strokeLinecap="round" strokeLinejoin="round">
+      <line x1="8" y1="6" x2="21" y2="6" />
+      <line x1="8" y1="12" x2="21" y2="12" />
+      <line x1="8" y1="18" x2="21" y2="18" />
+      <line x1="3" y1="6" x2="3.01" y2="6" />
+      <line x1="3" y1="12" x2="3.01" y2="12" />
+      <line x1="3" y1="18" x2="3.01" y2="18" />
+    </svg>
+  );
+}
+
+const VIEW_OPTIONS: { value: ViewMode; label: string; Icon: typeof GridIcon }[] = [
+  { value: "grid", label: "Large", Icon: GridIcon },
+  { value: "compact", label: "Small", Icon: CompactIcon },
+  { value: "list", label: "List", Icon: ListIcon },
 ];
 
 // ============================================================
@@ -33,6 +84,8 @@ export function FilterSortMenu({
   onPlatformFilterChange,
   platformCounts,
   totalCount,
+  viewMode,
+  onViewModeChange,
 }: {
   sortBy: SortOption;
   onSortChange: (sort: SortOption) => void;
@@ -40,6 +93,8 @@ export function FilterSortMenu({
   onPlatformFilterChange: (platform: string | null) => void;
   platformCounts: Record<string, number>;
   totalCount: number;
+  viewMode: ViewMode;
+  onViewModeChange: (mode: ViewMode) => void;
 }) {
   const hasActiveFilter = platformFilter !== null;
 
@@ -78,6 +133,32 @@ export function FilterSortMenu({
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56 p-0">
+        {/* View mode section */}
+        <div className="border-b px-3 py-2">
+          <p className="mb-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            View
+          </p>
+          <div className="flex gap-1">
+            {VIEW_OPTIONS.map((opt) => {
+              const isActive = viewMode === opt.value;
+              return (
+                <button
+                  key={opt.value}
+                  onClick={() => onViewModeChange(opt.value)}
+                  className={`flex flex-1 items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-medium transition-colors ${
+                    isActive
+                      ? "bg-foreground text-background"
+                      : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                  }`}
+                >
+                  <opt.Icon active={isActive} />
+                  <span>{opt.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         {/* Sort section */}
         <div className="border-b px-3 py-2">
           <p className="mb-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground">

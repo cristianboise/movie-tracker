@@ -7,7 +7,7 @@ import type { Movie } from "@/components/movie-collection";
 import { MovieDetailDialog } from "@/components/movie-detail-dialog";
 import { HamburgerMenu } from "@/components/hamburger-menu";
 import { FilterSortMenu } from "@/components/filter-sort-menu";
-import type { SortOption } from "@/components/filter-sort-menu";
+import type { SortOption, ViewMode } from "@/components/filter-sort-menu";
 import { PLATFORMS } from "@/lib/platforms";
 
 type User = {
@@ -21,10 +21,11 @@ export function SignedInHome({ user }: { user: User }) {
   const [refreshKey, setRefreshKey] = useState(0);
   const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
 
-  // Lifted search/filter/sort state
+  // Lifted search/filter/sort/view state
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<SortOption>("title-asc");
   const [platformFilter, setPlatformFilter] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const [allMovies, setAllMovies] = useState<Movie[]>([]);
 
   // Stable callback for MovieCollection to report loaded movies
@@ -63,14 +64,14 @@ export function SignedInHome({ user }: { user: User }) {
               </svg>
               <input
                 type="text"
-                placeholder="Search Movie Tracker..."
+                placeholder="Search movies..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="w-full rounded-lg border border-input bg-background py-2.5 pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
               />
             </div>
 
-            {/* Filter/sort dropdown */}
+            {/* Filter/sort/view dropdown */}
             <FilterSortMenu
               sortBy={sortBy}
               onSortChange={setSortBy}
@@ -78,6 +79,8 @@ export function SignedInHome({ user }: { user: User }) {
               onPlatformFilterChange={setPlatformFilter}
               platformCounts={platformCounts}
               totalCount={allMovies.length}
+              viewMode={viewMode}
+              onViewModeChange={setViewMode}
             />
 
             {/* Add movie button — compact icon */}
@@ -90,13 +93,14 @@ export function SignedInHome({ user }: { user: User }) {
           </div>
         </div>
 
-        {/* Movie grid */}
+        {/* Movie grid/list */}
         <MovieCollection
           refreshKey={refreshKey}
           onMovieClick={(movie) => setSelectedMovie(movie)}
           search={search}
           sortBy={sortBy}
           platformFilter={platformFilter}
+          viewMode={viewMode}
           onMoviesLoaded={handleMoviesLoaded}
         />
 
