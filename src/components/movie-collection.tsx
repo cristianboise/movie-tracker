@@ -153,7 +153,7 @@ export function MovieCollection({
           <button
             key={movie.id}
             onClick={() => onMovieClick(movie)}
-            className="flex w-full items-center gap-3 px-1 py-2.5 text-left transition-colors hover:bg-accent/50"
+            className="flex w-full items-start gap-3 px-1 py-2.5 text-left transition-colors hover:bg-accent/50"
           >
             {movie.posterUrl ? (
               <img
@@ -171,24 +171,24 @@ export function MovieCollection({
               <p className="text-xs text-muted-foreground">
                 {movie.year}{movie.runtime ? ` \u00B7 ${movie.runtime} min` : ""}
               </p>
-            </div>
-            <div className="flex shrink-0 flex-wrap gap-1">
-              {movie.platforms.map((p) => {
-                const config = getPlatform(p.platform);
-                return (
-                  <span
-                    key={p.id}
-                    className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium ${
-                      config
-                        ? `${config.bgClass} ${config.textClass}`
-                        : "bg-gray-500 text-white"
-                    }`}
-                  >
-                    <PlatformLogo platformId={p.platform} className="h-3 w-3 shrink-0" />
-                    {config?.label || p.platform}
-                  </span>
-                );
-              })}
+              <div className="mt-1 flex flex-wrap gap-1">
+                {movie.platforms.map((p) => {
+                  const config = getPlatform(p.platform);
+                  return (
+                    <span
+                      key={p.id}
+                      className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium ${
+                        config
+                          ? `${config.bgClass} ${config.textClass}`
+                          : "bg-gray-500 text-white"
+                      }`}
+                    >
+                      <PlatformLogo platformId={p.platform} className="h-3 w-3 shrink-0" />
+                      {config?.label || p.platform}
+                    </span>
+                  );
+                })}
+              </div>
             </div>
           </button>
         ))}

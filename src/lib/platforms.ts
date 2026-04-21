@@ -5,9 +5,9 @@ export const PLATFORMS = [
   {
     id: "apple",
     label: "Apple",
-    bgClass: "bg-neutral-800",
-    textClass: "text-white",
-    borderClass: "border-neutral-800",
+    bgClass: "bg-zinc-300",
+    textClass: "text-zinc-900",
+    borderClass: "border-zinc-400",
   },
   {
     id: "fandango",
@@ -18,10 +18,10 @@ export const PLATFORMS = [
   },
   {
     id: "amazon",
-    label: "Amazon",
-    bgClass: "bg-sky-700",
+    label: "Prime Video",
+    bgClass: "bg-[#0779FF]",
     textClass: "text-white",
-    borderClass: "border-sky-700",
+    borderClass: "border-[#0779FF]",
   },
   {
     id: "movies_anywhere",
