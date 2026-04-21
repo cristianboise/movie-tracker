@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 
 type ThemeMode = "system" | "light" | "dark";
 
@@ -51,7 +51,7 @@ function MoonIcon() {
   );
 }
 
-const OPTIONS: { value: ThemeMode; label: string; Icon: () => JSX.Element }[] = [
+const OPTIONS: { value: ThemeMode; label: string; Icon: () => React.ReactNode }[] = [
   { value: "system", label: "Auto", Icon: MonitorIcon },
   { value: "light", label: "Light", Icon: SunIcon },
   { value: "dark", label: "Dark", Icon: MoonIcon },
