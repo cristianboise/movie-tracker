@@ -19,12 +19,14 @@ export const metadata: Metadata = {
 };
 
 // Inline script that runs before React hydrates.
-// Reads localStorage, falls back to system preference, adds .dark immediately.
-// Prevents the flash of wrong theme.
+// Reads the new "theme-mode" key, falls back to system preference.
+// Also clears the old "theme" key from the previous implementation.
+// Prevents flash of wrong theme on page load.
 const themeScript = `
 (function(){
   try {
-    var t = localStorage.getItem("theme");
+    localStorage.removeItem("theme");
+    var t = localStorage.getItem("theme-mode");
     var d = t === "dark" || (!t && window.matchMedia("(prefers-color-scheme: dark)").matches);
     if (t === "light") d = false;
     if (d) document.documentElement.classList.add("dark");
