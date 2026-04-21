@@ -43,6 +43,7 @@ export type TmdbMovieDetail = {
   release_date: string;
   overview: string;
   poster_path: string | null;
+  backdrop_path: string | null; // e.g. "/backdrop123.jpg"
   runtime: number | null;     // in minutes
   genres: { id: number; name: string }[];
   vote_average: number;
@@ -123,6 +124,14 @@ export function getPosterUrl(posterPath: string | null): string | null {
   return `https://image.tmdb.org/t/p/w500${posterPath}`;
 }
 
+// Build a full backdrop image URL. w1280 gives a good balance
+// for hero backgrounds — large enough to look sharp, but not
+// the full original size.
+export function getBackdropUrl(backdropPath: string | null): string | null {
+  if (!backdropPath) return null;
+  return `https://image.tmdb.org/t/p/w1280${backdropPath}`;
+}
+
 // ============================================================
 // CACHING
 // Before calling TMDB, check if we already have the data
@@ -171,6 +180,7 @@ export async function getCachedMovieData(tmdbId: number) {
     genres: detail.genres.map((g) => g.name),
     rating: detail.vote_average,
     posterUrl: getPosterUrl(detail.poster_path),
+    backdropUrl: getBackdropUrl(detail.backdrop_path),
     cast: cast.map((c) => ({
       name: c.name,
       character: c.character,
