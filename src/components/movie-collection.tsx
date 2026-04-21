@@ -224,27 +224,30 @@ export function MovieCollection({
             : "No movies match your filters."}
         </p>
       ) : (
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 gap-x-3 gap-y-6 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
           {sorted.map((movie) => (
             <button
               key={movie.id}
               onClick={() => onMovieClick(movie)}
-              className="group text-left"
+              className="group flex h-full flex-col text-left"
             >
-              <div className="aspect-[2/3] w-full overflow-hidden rounded-lg shadow-md">
+              <div
+                className="relative w-full flex-shrink-0 overflow-hidden rounded-lg shadow-md"
+                style={{ aspectRatio: "2/3" }}
+              >
                 {movie.posterUrl ? (
                   <img
                     src={movie.posterUrl}
                     alt={movie.title}
-                    className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                    className="absolute inset-0 h-full w-full object-cover transition-transform group-hover:scale-105"
                   />
                 ) : (
-                  <div className="flex h-full w-full items-center justify-center bg-muted p-2 text-center text-xs text-muted-foreground">
+                  <div className="absolute inset-0 flex items-center justify-center bg-muted p-2 text-center text-xs text-muted-foreground">
                     {movie.title}
                   </div>
                 )}
               </div>
-              <p className="mt-1 truncate text-sm font-medium">
+              <p className="mt-1.5 truncate text-sm font-medium">
                 {movie.title}
               </p>
               {/* Grid badges — keep text only, logos are too small here */}
