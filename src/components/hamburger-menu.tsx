@@ -17,6 +17,26 @@ type User = {
   id?: string;
 };
 
+function getFirstName(user: User): string {
+  if (user.name) {
+    return user.name.split(" ")[0];
+  }
+  if (user.email) {
+    return user.email.split("@")[0];
+  }
+  return "User";
+}
+
+function getInitials(user: User): string {
+  if (user.name) {
+    const parts = user.name.split(" ");
+    if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+    return parts[0][0].toUpperCase();
+  }
+  if (user.email) return user.email[0].toUpperCase();
+  return "U";
+}
+
 export function HamburgerMenu({ user }: { user: User }) {
   return (
     <DropdownMenu>
@@ -41,14 +61,27 @@ export function HamburgerMenu({ user }: { user: User }) {
           </svg>
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-48">
-        <div className="px-2 py-2 text-sm text-muted-foreground">
-          {user.name || user.email}
+      <DropdownMenuContent align="end" className="w-52">
+        {/* User info with avatar */}
+        <div className="flex items-center gap-2.5 px-2 py-2.5">
+          {user.image ? (
+            <img
+              src={user.image}
+              alt=""
+              className="h-8 w-8 rounded-full"
+              referrerPolicy="no-referrer"
+            />
+          ) : (
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-xs font-medium text-muted-foreground">
+              {getInitials(user)}
+            </div>
+          )}
+          <div className="min-w-0">
+            <p className="truncate text-sm font-medium">{getFirstName(user)}</p>
+          </div>
         </div>
         <DropdownMenuSeparator />
-        <DropdownMenuItem asChild>
-          <ThemeToggle />
-        </DropdownMenuItem>
+        <ThemeToggle />
         <DropdownMenuSeparator />
         <DropdownMenuItem
           onClick={() => signOut({ callbackUrl: "/" })}

@@ -9,7 +9,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { PLATFORMS, RESOLUTIONS, DEFAULT_RESOLUTION, getPlatform } from "@/lib/platforms";
+import { PLATFORMS, RESOLUTIONS, DEFAULT_RESOLUTION } from "@/lib/platforms";
 import { PlatformLogo } from "@/components/platform-logos";
 
 // ============================================================
@@ -146,13 +146,31 @@ export function AddMovieDialog({ onMovieAdded }: { onMovieAdded: () => void }) {
       }}
     >
       <DialogTrigger asChild>
-        <Button className="w-full text-base">+ Add Movie</Button>
+        {/* Compact + icon for the header row */}
+        <button
+          className="flex h-10 w-10 items-center justify-center rounded-lg text-foreground hover:bg-accent transition-colors"
+          aria-label="Add movie"
+        >
+          <svg
+            width="22"
+            height="22"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <line x1="12" y1="5" x2="12" y2="19" />
+            <line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
+        </button>
       </DialogTrigger>
 
       <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="text-lg">
-            {step === "search" && "Search for a Movie"}
+            {step === "search" && "Add Movie"}
             {step === "select" && "Select a Movie"}
             {step === "platforms" && selectedMovie?.title}
           </DialogTitle>
@@ -200,7 +218,7 @@ export function AddMovieDialog({ onMovieAdded }: { onMovieAdded: () => void }) {
                 setResults([]);
               }}
             >
-              ← Back to search
+              &larr; Back to search
             </Button>
 
             {results.length === 0 ? (
@@ -244,7 +262,7 @@ export function AddMovieDialog({ onMovieAdded }: { onMovieAdded: () => void }) {
           </div>
         )}
 
-        {/* STEP 3: Choose platforms — now with logos */}
+        {/* STEP 3: Choose platforms */}
         {step === "platforms" && selectedMovie && (
           <div className="space-y-4">
             <Button
@@ -255,7 +273,7 @@ export function AddMovieDialog({ onMovieAdded }: { onMovieAdded: () => void }) {
                 setPlatformSelections([]);
               }}
             >
-              ← Back to results
+              &larr; Back to results
             </Button>
 
             <div className="flex gap-3">
