@@ -265,7 +265,7 @@ export function MovieDetailDialog({
 
         {/* Overview */}
         {tmdbData?.overview && (
-          <p className="text-base leading-relaxed text-muted-foreground">
+          <p className="text-sm leading-relaxed text-muted-foreground">
             {tmdbData.overview}
           </p>
         )}
@@ -273,10 +273,12 @@ export function MovieDetailDialog({
         {/* Cast */}
         {tmdbData?.cast && tmdbData.cast.length > 0 && (
           <div>
-            <p className="mb-1 text-base font-medium">Cast</p>
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Cast
+            </p>
             <div className="space-y-0.5">
               {tmdbData.cast.map((member) => (
-                <p key={member.name} className="text-base text-muted-foreground">
+                <p key={member.name} className="text-sm text-muted-foreground">
                   <span className="font-medium text-foreground">{member.name}</span>
                   {" as "}
                   {member.character}
@@ -289,7 +291,9 @@ export function MovieDetailDialog({
         {/* Platforms — view or edit mode */}
         <div>
           <div className="mb-2 flex items-center justify-between">
-            <p className="text-base font-medium">Platforms</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Platforms
+            </p>
             {!editing && (
               <Button
                 variant="ghost"
@@ -303,6 +307,18 @@ export function MovieDetailDialog({
 
           {editing ? (
             <div className="space-y-2">
+              {/* Notes field — above platforms */}
+              <div>
+                <p className="mb-1 text-sm font-medium">Notes</p>
+                <input
+                  type="text"
+                  placeholder="e.g., Director's cut, Extended edition..."
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  className="w-full rounded-lg border border-input bg-background px-3 py-2.5 text-base text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+              </div>
+
               {PLATFORMS.map((platform) => {
                 const isSelected = platformSelections.some(
                   (p) => p.platform === platform.id
@@ -349,18 +365,6 @@ export function MovieDetailDialog({
                 );
               })}
 
-              {/* Notes field */}
-              <div>
-                <p className="mb-1 text-sm font-medium">Notes</p>
-                <input
-                  type="text"
-                  placeholder="e.g., Director's cut, Extended edition..."
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  className="w-full rounded-lg border border-input bg-background px-3 py-2.5 text-base text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                />
-              </div>
-
               <div className="flex gap-2">
                 <Button
                   className="flex-1"
@@ -387,37 +391,40 @@ export function MovieDetailDialog({
               </div>
             </div>
           ) : (
-            <div className="space-y-1.5">
-              {movie.platforms.map((p) => {
-                const config = getPlatform(p.platform);
-                return (
-                  <div key={p.id} className="flex items-center gap-2">
-                    <span
-                      className={`inline-flex items-center gap-1.5 rounded px-2.5 py-1 text-xs font-medium ${
-                        config
-                          ? `${config.bgClass} ${config.textClass}`
-                          : "bg-gray-500 text-white"
-                      }`}
-                    >
-                      <PlatformLogo
-                        platformId={p.platform}
-                        className="h-3.5 w-3.5 shrink-0"
-                      />
-                      {config?.label || p.platform}
-                    </span>
-                    {p.resolution && (
-                      <span className="text-sm text-muted-foreground">
-                        {p.resolution}
-                      </span>
-                    )}
-                  </div>
-                );
-              })}
+            <div className="space-y-2">
               {movie.notes && (
-                <p className="mt-2 text-sm text-muted-foreground">
+                <p className="text-sm text-muted-foreground">
+                  <span className="font-medium text-foreground">Notes: </span>
                   {movie.notes}
                 </p>
               )}
+              <div className="flex flex-wrap gap-1.5">
+                {movie.platforms.map((p) => {
+                  const config = getPlatform(p.platform);
+                  return (
+                    <div key={p.id} className="flex items-center gap-2">
+                      <span
+                        className={`inline-flex items-center gap-1.5 rounded px-2.5 py-1 text-xs font-medium ${
+                          config
+                            ? `${config.bgClass} ${config.textClass}`
+                            : "bg-gray-500 text-white"
+                        }`}
+                      >
+                        <PlatformLogo
+                          platformId={p.platform}
+                          className="h-3.5 w-3.5 shrink-0"
+                        />
+                        {config?.label || p.platform}
+                      </span>
+                      {p.resolution && (
+                        <span className="text-sm text-muted-foreground">
+                          {p.resolution}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
         </div>

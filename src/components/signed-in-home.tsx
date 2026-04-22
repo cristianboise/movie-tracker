@@ -65,6 +65,7 @@ export function SignedInHome({ user }: { user: User }) {
             {/* Add movie button — compact icon */}
             <AddMovieDialog
               onMovieAdded={() => setRefreshKey((k) => k + 1)}
+              existingTmdbIds={allMovies.map((m) => m.tmdbId)}
             />
 
             {/* Search input — takes remaining space */}

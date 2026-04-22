@@ -136,12 +136,60 @@ export function MovieCollection({
 
   // Empty state
   if (sorted.length === 0) {
+    if (movies.length === 0) {
+      return (
+        <div className="mt-24 flex flex-col items-center gap-4 text-center">
+          <div className="rounded-full bg-muted p-6">
+            <svg
+              width="32"
+              height="32"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="text-muted-foreground"
+            >
+              <rect x="2" y="2" width="20" height="20" rx="2" ry="2" />
+              <line x1="7" y1="2" x2="7" y2="22" />
+              <line x1="17" y1="2" x2="17" y2="22" />
+              <line x1="2" y1="12" x2="22" y2="12" />
+              <line x1="2" y1="7" x2="7" y2="7" />
+              <line x1="2" y1="17" x2="7" y2="17" />
+              <line x1="17" y1="17" x2="22" y2="17" />
+              <line x1="17" y1="7" x2="22" y2="7" />
+            </svg>
+          </div>
+          <div>
+            <p className="font-medium">Your collection is empty</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Tap <span className="font-semibold">+</span> to add your first movie
+            </p>
+          </div>
+        </div>
+      );
+    }
     return (
-      <p className="mt-12 text-center text-sm text-muted-foreground">
-        {movies.length === 0
-          ? "Your collection is empty. Tap + to add your first movie!"
-          : "No movies match your filters."}
-      </p>
+      <div className="mt-24 flex flex-col items-center gap-3 text-center">
+        <div className="rounded-full bg-muted p-5">
+          <svg
+            width="26"
+            height="26"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="text-muted-foreground"
+          >
+            <circle cx="11" cy="11" r="8" />
+            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+          </svg>
+        </div>
+        <p className="text-sm text-muted-foreground">No movies match your filters</p>
+      </div>
     );
   }
 
@@ -221,6 +269,12 @@ export function MovieCollection({
                   {movie.title}
                 </div>
               )}
+              {/* Hover overlay — desktop only */}
+              <div className="pointer-events-none absolute inset-0 hidden flex-col justify-end bg-gradient-to-t from-black/80 via-black/30 to-transparent opacity-0 transition-opacity duration-200 group-hover:opacity-100 sm:flex">
+                <p className="p-1.5 text-[9px] font-medium leading-tight text-white line-clamp-2">
+                  {movie.title}
+                </p>
+              </div>
             </div>
           </button>
         ))}
@@ -252,6 +306,12 @@ export function MovieCollection({
                 {movie.title}
               </div>
             )}
+            {/* Hover overlay — desktop only */}
+            <div className="pointer-events-none absolute inset-0 hidden flex-col justify-end bg-gradient-to-t from-black/80 via-black/30 to-transparent opacity-0 transition-opacity duration-200 group-hover:opacity-100 sm:flex">
+              <p className="p-2 text-xs font-medium leading-tight text-white line-clamp-2">
+                {movie.title}
+              </p>
+            </div>
           </div>
           <p className="mt-1.5 truncate text-sm font-medium">
             {movie.title}

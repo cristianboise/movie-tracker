@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { tmdbId, platforms } = body;
+    const { tmdbId, platforms, notes } = body;
 
     if (!tmdbId || typeof tmdbId !== "number") {
       return NextResponse.json(
@@ -75,6 +75,7 @@ export async function POST(request: NextRequest) {
         runtimeMin: tmdbData.runtime,
         posterUrl: tmdbData.posterUrl,
         tmdbMetadataJson: JSON.stringify(tmdbData),
+        notes: typeof notes === "string" && notes.trim() ? notes.trim() : null,
       })
       .returning();
 

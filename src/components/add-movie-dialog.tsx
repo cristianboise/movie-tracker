@@ -34,13 +34,20 @@ type PlatformSelection = {
 // COMPONENT
 // ============================================================
 
-export function AddMovieDialog({ onMovieAdded }: { onMovieAdded: () => void }) {
+export function AddMovieDialog({
+  onMovieAdded,
+  existingTmdbIds = [],
+}: {
+  onMovieAdded: () => void;
+  existingTmdbIds?: number[];
+}) {
   const [step, setStep] = useState<"search" | "select" | "platforms">("search");
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [selectedMovie, setSelectedMovie] = useState<SearchResult | null>(null);
   const [platformSelections, setPlatformSelections] = useState<PlatformSelection[]>([]);
+  const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -50,6 +57,7 @@ export function AddMovieDialog({ onMovieAdded }: { onMovieAdded: () => void }) {
     setResults([]);
     setSelectedMovie(null);
     setPlatformSelections([]);
+    setNotes("");
     setError(null);
   }
 
@@ -117,6 +125,7 @@ export function AddMovieDialog({ onMovieAdded }: { onMovieAdded: () => void }) {
         body: JSON.stringify({
           tmdbId: selectedMovie.tmdbId,
           platforms: platformSelections,
+          notes: notes.trim() || null,
         }),
       });
 
@@ -263,7 +272,9 @@ export function AddMovieDialog({ onMovieAdded }: { onMovieAdded: () => void }) {
         )}
 
         {/* STEP 3: Choose platforms */}
-        {step === "platforms" && selectedMovie && (
+        {step === "platforms" && selectedMovie && (() => {
+          const isDuplicate = existingTmdbIds.includes(selectedMovie.tmdbId);
+          return (
           <div className="space-y-4">
             <Button
               variant="ghost"
@@ -292,68 +303,89 @@ export function AddMovieDialog({ onMovieAdded }: { onMovieAdded: () => void }) {
               </div>
             </div>
 
-            <div>
-              <p className="mb-2 text-sm font-medium">
-                Where do you own this movie?
-              </p>
-              <div className="space-y-2">
-                {PLATFORMS.map((platform) => {
-                  const isSelected = platformSelections.some(
-                    (p) => p.platform === platform.id
-                  );
-                  const selection = platformSelections.find(
-                    (p) => p.platform === platform.id
-                  );
-
-                  return (
-                    <div key={platform.id} className="space-y-1">
-                      <button
-                        onClick={() => togglePlatform(platform.id)}
-                        className={`flex w-full items-center gap-3 rounded-lg border p-3 text-left text-sm font-medium transition-colors ${
-                          isSelected
-                            ? `${platform.bgClass} ${platform.textClass} border-transparent`
-                            : "hover:bg-accent"
-                        }`}
-                      >
-                        <PlatformLogo
-                          platformId={platform.id}
-                          className="h-5 w-5 shrink-0"
-                        />
-                        {platform.label}
-                      </button>
-
-                      {isSelected && (
-                        <div className="flex gap-1 pl-3">
-                          {RESOLUTIONS.map((res) => (
-                            <button
-                              key={res}
-                              onClick={() => setResolution(platform.id, res)}
-                              className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
-                                selection?.resolution === res
-                                  ? "bg-foreground text-background"
-                                  : "border border-input text-muted-foreground hover:text-foreground"
-                              }`}
-                            >
-                              {res}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+            {isDuplicate ? (
+              <div className="rounded-md bg-amber-500/10 p-3 text-sm text-amber-700 dark:text-amber-400">
+                This movie is already in your collection. Open it from your collection to edit platforms or notes.
               </div>
-            </div>
+            ) : (
+              <div className="space-y-4">
+                <div>
+                  <p className="mb-1 text-sm font-medium">Notes</p>
+                  <input
+                    type="text"
+                    placeholder="e.g., Director's cut, Extended edition..."
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    className="w-full rounded-lg border border-input bg-background px-3 py-2.5 text-base text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                  />
+                </div>
+                <div>
+                <p className="mb-2 text-sm font-medium">
+                  Where do you own this movie?
+                </p>
+                <div className="space-y-2">
+                  {PLATFORMS.map((platform) => {
+                    const isSelected = platformSelections.some(
+                      (p) => p.platform === platform.id
+                    );
+                    const selection = platformSelections.find(
+                      (p) => p.platform === platform.id
+                    );
 
-            <Button
-              className="w-full text-base"
-              disabled={platformSelections.length === 0 || loading}
-              onClick={handleSave}
-            >
-              {loading ? "Adding..." : "Add to Collection"}
-            </Button>
+                    return (
+                      <div key={platform.id} className="space-y-1">
+                        <button
+                          onClick={() => togglePlatform(platform.id)}
+                          className={`flex w-full items-center gap-3 rounded-lg border p-3 text-left text-sm font-medium transition-colors ${
+                            isSelected
+                              ? `${platform.bgClass} ${platform.textClass} border-transparent`
+                              : "hover:bg-accent"
+                          }`}
+                        >
+                          <PlatformLogo
+                            platformId={platform.id}
+                            className="h-5 w-5 shrink-0"
+                          />
+                          {platform.label}
+                        </button>
+
+                        {isSelected && (
+                          <div className="flex gap-1 pl-3">
+                            {RESOLUTIONS.map((res) => (
+                              <button
+                                key={res}
+                                onClick={() => setResolution(platform.id, res)}
+                                className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                                  selection?.resolution === res
+                                    ? "bg-foreground text-background"
+                                    : "border border-input text-muted-foreground hover:text-foreground"
+                                }`}
+                              >
+                                {res}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+                </div>
+              </div>
+            )}
+
+            {!isDuplicate && (
+              <Button
+                className="w-full text-base"
+                disabled={platformSelections.length === 0 || loading}
+                onClick={handleSave}
+              >
+                {loading ? "Adding..." : "Add to Collection"}
+              </Button>
+            )}
           </div>
-        )}
+          );
+        })()}
       </DialogContent>
     </Dialog>
   );
