@@ -2,6 +2,13 @@
 
 import { useState, useEffect } from "react";
 import Image from "next/image";
+import { Barlow_Condensed } from "next/font/google";
+
+const barlowCondensed = Barlow_Condensed({
+  weight: "700",
+  subsets: ["latin"],
+  display: "swap",
+});
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -273,8 +280,12 @@ export function MovieDetailDialog({
                 href={`https://www.imdb.com/title/${tmdbData.imdbId}/`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mt-1 inline-flex items-center gap-1 rounded px-2 py-0.5 text-sm font-bold text-black"
-                style={{ backgroundColor: "#F5C518" }}
+                className={`mt-1 inline-flex items-center rounded px-2 py-0.5 text-black ${barlowCondensed.className}`}
+                style={{
+                  backgroundColor: "#F5C518",
+                  fontSize: "1rem",
+                  letterSpacing: "0.01em",
+                }}
                 aria-label={`View ${movie.title} on IMDb`}
               >
                 IMDb
