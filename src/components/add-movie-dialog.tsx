@@ -50,6 +50,7 @@ export function AddMovieDialog({
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [lastAdded, setLastAdded] = useState<string | null>(null);
 
   function resetDialog() {
     setStep("search");
@@ -59,6 +60,19 @@ export function AddMovieDialog({
     setPlatformSelections([]);
     setNotes("");
     setError(null);
+    setLastAdded(null);
+  }
+
+  function resetForNextSearch(addedTitle: string) {
+    setStep("search");
+    setQuery("");
+    setResults([]);
+    setSelectedMovie(null);
+    setPlatformSelections([]);
+    setNotes("");
+    setError(null);
+    setLastAdded(addedTitle);
+    setTimeout(() => setLastAdded(null), 3000);
   }
 
   async function handleSearch() {
@@ -136,8 +150,7 @@ export function AddMovieDialog({
         return;
       }
 
-      setOpen(false);
-      resetDialog();
+      resetForNextSearch(selectedMovie.title);
       onMovieAdded();
     } catch {
       setError("Failed to save. Check your connection.");
@@ -184,6 +197,12 @@ export function AddMovieDialog({
             {step === "platforms" && selectedMovie?.title}
           </DialogTitle>
         </DialogHeader>
+
+        {lastAdded && (
+          <div className="rounded-md bg-green-500/10 p-3 text-sm text-green-700 dark:text-green-400">
+            ✓ &ldquo;{lastAdded}&rdquo; added to your collection
+          </div>
+        )}
 
         {error && (
           <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
