@@ -48,6 +48,7 @@ type TmdbData = {
   posterUrl: string | null;
   backdropUrl: string | null;
   cast: { name: string; character: string }[];
+  imdbId: string | null;
 };
 
 type PlatformSelection = {
@@ -267,6 +268,18 @@ export function MovieDetailDialog({
                 Rating: {tmdbData.rating.toFixed(1)}/10
               </p>
             ) : null}
+            {tmdbData?.imdbId && (
+              <a
+                href={`https://www.imdb.com/title/${tmdbData.imdbId}/`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-1 inline-flex items-center gap-1 rounded px-2 py-0.5 text-sm font-bold text-black"
+                style={{ backgroundColor: "#F5C518" }}
+                aria-label={`View ${movie.title} on IMDb`}
+              >
+                IMDb
+              </a>
+            )}
           </div>
         </div>
 

@@ -131,6 +131,20 @@ export function getBackdropUrl(backdropPath: string | null): string | null {
   return `https://image.tmdb.org/t/p/w1280${backdropPath}`;
 }
 
+// Get external IDs for a movie (IMDb, Wikidata, etc.)
+export async function getMovieExternalIds(tmdbId: number): Promise<{ imdb_id: string | null }> {
+  const response = await fetch(`${TMDB_BASE_URL}/movie/${tmdbId}/external_ids`, {
+    headers: getHeaders(),
+  });
+
+  if (!response.ok) {
+    // Non-critical — return empty rather than crashing
+    return { imdb_id: null };
+  }
+
+  return response.json();
+}
+
 // ============================================================
 // CACHING
 // Before calling TMDB, check if we already have the data
@@ -164,9 +178,10 @@ export async function getCachedMovieData(tmdbId: number) {
   }
 
   // Step 2: Cache miss or stale — fetch from TMDB
-  const [detail, cast] = await Promise.all([
+  const [detail, cast, externalIds] = await Promise.all([
     getMovieDetail(tmdbId),
     getMovieCast(tmdbId),
+    getMovieExternalIds(tmdbId),
   ]);
 
   const payload = {
@@ -184,6 +199,7 @@ export async function getCachedMovieData(tmdbId: number) {
       name: c.name,
       character: c.character,
     })),
+    imdbId: externalIds.imdb_id ?? null,
   };
 
   // Step 3: Save to cache (insert or update if already exists)
