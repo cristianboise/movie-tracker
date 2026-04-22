@@ -229,14 +229,15 @@ export function MovieCollection({
                   return (
                     <span
                       key={p.id}
-                      className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium ${
+                      aria-label={config?.label || p.platform}
+                      className={`inline-flex items-center gap-1 rounded px-2 py-1 text-xs font-medium ${
                         config
                           ? `${config.bgClass} ${config.textClass}`
                           : "bg-gray-500 text-white"
                       }`}
                     >
-                      <PlatformLogo platformId={p.platform} className="h-3 w-3 shrink-0" />
-                      {config?.label || p.platform}
+                      <PlatformLogo platformId={p.platform} className="h-3.5 w-3.5 shrink-0" />
+                      {p.resolution && <span>{p.resolution}</span>}
                     </span>
                   );
                 })}
@@ -324,20 +325,21 @@ export function MovieCollection({
           <p className="mt-1.5 truncate text-sm font-medium">
             {movie.title}
           </p>
-          {/* Grid badges — text only, logos too small here */}
           <div className="mt-0.5 flex flex-wrap gap-0.5">
             {movie.platforms.map((p) => {
               const config = getPlatform(p.platform);
               return (
                 <span
                   key={p.id}
-                  className={`inline-block rounded px-1.5 py-0.5 text-[10px] font-medium ${
+                  aria-label={config?.label || p.platform}
+                  className={`inline-flex items-center gap-1 rounded px-2 py-1 text-xs font-medium ${
                     config
                       ? `${config.bgClass} ${config.textClass}`
                       : "bg-gray-500 text-white"
                   }`}
                 >
-                  {config?.label || p.platform}
+                  <PlatformLogo platformId={p.platform} className="h-3.5 w-3.5 shrink-0" />
+                  {p.resolution && <span>{p.resolution}</span>}
                 </span>
               );
             })}

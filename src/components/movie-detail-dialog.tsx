@@ -409,26 +409,21 @@ export function MovieDetailDialog({
                 {movie.platforms.map((p) => {
                   const config = getPlatform(p.platform);
                   return (
-                    <div key={p.id} className="flex items-center gap-2">
-                      <span
-                        className={`inline-flex items-center gap-1.5 rounded px-2.5 py-1 text-xs font-medium ${
-                          config
-                            ? `${config.bgClass} ${config.textClass}`
-                            : "bg-gray-500 text-white"
-                        }`}
-                      >
-                        <PlatformLogo
-                          platformId={p.platform}
-                          className="h-3.5 w-3.5 shrink-0"
-                        />
-                        {config?.label || p.platform}
-                      </span>
-                      {p.resolution && (
-                        <span className="text-sm text-muted-foreground">
-                          {p.resolution}
-                        </span>
-                      )}
-                    </div>
+                    <span
+                      key={p.id}
+                      aria-label={config?.label || p.platform}
+                      className={`inline-flex items-center gap-1.5 rounded px-3 py-1.5 text-sm font-medium ${
+                        config
+                          ? `${config.bgClass} ${config.textClass}`
+                          : "bg-gray-500 text-white"
+                      }`}
+                    >
+                      <PlatformLogo
+                        platformId={p.platform}
+                        className="h-4 w-4 shrink-0"
+                      />
+                      {p.resolution && <span>{p.resolution}</span>}
+                    </span>
                   );
                 })}
               </div>
