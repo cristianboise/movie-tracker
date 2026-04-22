@@ -189,44 +189,41 @@ export function MovieDetailDialog({
   return (
     <Dialog open={open} onOpenChange={(isOpen) => { if (!isOpen) onClose(); }}>
       <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-md p-0">
-        {/* ── Backdrop hero ── */}
-        <div className="relative w-full overflow-hidden rounded-t-xl">
-          {tmdbData?.backdropUrl ? (
+        {/* Backdrop hero */}
+        {tmdbData?.backdropUrl ? (
+          <div className="relative h-44 w-full overflow-hidden rounded-t-lg">
             <img
               src={tmdbData.backdropUrl}
               alt=""
-              className="h-48 w-full object-cover"
+              className="absolute inset-0 h-full w-full object-cover"
             />
-          ) : (
-            <div className="h-48 w-full bg-muted" />
-          )}
-          {/* Gradient scrim */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
-          {/* Poster + title overlaid on the backdrop */}
-          <div className="absolute bottom-0 left-0 right-0 flex items-end gap-3 p-4">
-            {movie.posterUrl && (
-              <img
-                src={movie.posterUrl}
-                alt={movie.title}
-                className="h-28 w-20 shrink-0 rounded-lg object-cover shadow-lg ring-1 ring-white/20"
-              />
-            )}
-            <div className="min-w-0 flex-1 pb-1">
+            {/* Gradient overlay so text is readable */}
+            <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
+            {/* Title + year overlaid on backdrop */}
+            <div className="absolute bottom-0 left-0 right-0 px-6 pb-3">
               <DialogHeader>
-                <DialogTitle className="text-xl font-bold leading-tight text-white drop-shadow-md">
+                <DialogTitle className="text-xl text-foreground drop-shadow-sm">
                   {movie.title}
                 </DialogTitle>
               </DialogHeader>
-              <p className="mt-0.5 text-sm text-white/70">
-                {movie.year}{movie.runtime ? ` · ${movie.runtime} min` : ""}
-                {tmdbData?.rating ? ` · ★ ${tmdbData.rating.toFixed(1)}` : ""}
+              <p className="text-sm text-muted-foreground">
+                {movie.year}{movie.runtime ? ` \u00B7 ${movie.runtime} min` : ""}
               </p>
             </div>
           </div>
-        </div>
+        ) : (
+          <div className="px-6 pt-6">
+            <DialogHeader>
+              <DialogTitle className="text-xl">{movie.title}</DialogTitle>
+            </DialogHeader>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {movie.year}{movie.runtime ? ` \u00B7 ${movie.runtime} min` : ""}
+            </p>
+          </div>
+        )}
 
-        {/* ── Body content ── */}
-        <div className="space-y-4 px-4 pb-4">
+        {/* Content area — padded */}
+        <div className="space-y-4 px-6 pb-6">
 
         {error && (
           <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
@@ -234,16 +231,23 @@ export function MovieDetailDialog({
           </div>
         )}
 
-        {/* Tagline + genres */}
-        {(tmdbData?.tagline || tmdbData?.genres) && (
-          <div className="space-y-1.5">
+        {/* Poster + metadata */}
+        <div className="flex gap-4">
+          {movie.posterUrl && (
+            <img
+              src={movie.posterUrl}
+              alt={movie.title}
+              className="h-40 w-28 rounded-lg object-cover shadow-md"
+            />
+          )}
+          <div className="flex-1 space-y-1">
             {tmdbData?.tagline && (
               <p className="text-sm italic text-muted-foreground">
                 &ldquo;{tmdbData.tagline}&rdquo;
               </p>
             )}
             {tmdbData?.genres && (
-              <div className="flex flex-wrap gap-1">
+              <div className="flex flex-wrap gap-1 pt-1">
                 {tmdbData.genres.map((genre) => (
                   <Badge key={genre} variant="outline" className="text-xs">
                     {genre}
@@ -251,12 +255,17 @@ export function MovieDetailDialog({
                 ))}
               </div>
             )}
+            {tmdbData?.rating ? (
+              <p className="text-sm text-muted-foreground">
+                Rating: {tmdbData.rating.toFixed(1)}/10
+              </p>
+            ) : null}
           </div>
-        )}
+        </div>
 
         {/* Overview */}
         {tmdbData?.overview && (
-          <p className="text-sm leading-relaxed text-muted-foreground">
+          <p className="text-base leading-relaxed text-muted-foreground">
             {tmdbData.overview}
           </p>
         )}
@@ -264,10 +273,10 @@ export function MovieDetailDialog({
         {/* Cast */}
         {tmdbData?.cast && tmdbData.cast.length > 0 && (
           <div>
-            <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Cast</p>
+            <p className="mb-1 text-base font-medium">Cast</p>
             <div className="space-y-0.5">
               {tmdbData.cast.map((member) => (
-                <p key={member.name} className="text-sm text-muted-foreground">
+                <p key={member.name} className="text-base text-muted-foreground">
                   <span className="font-medium text-foreground">{member.name}</span>
                   {" as "}
                   {member.character}
@@ -280,7 +289,7 @@ export function MovieDetailDialog({
         {/* Platforms — view or edit mode */}
         <div>
           <div className="mb-2 flex items-center justify-between">
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Platforms</p>
+            <p className="text-base font-medium">Platforms</p>
             {!editing && (
               <Button
                 variant="ghost"
@@ -447,8 +456,7 @@ export function MovieDetailDialog({
             </Button>
           )}
         </div>
-
-        </div>{/* end body content wrapper */}
+        </div>
       </DialogContent>
     </Dialog>
   );

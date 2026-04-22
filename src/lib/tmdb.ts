@@ -124,9 +124,8 @@ export function getPosterUrl(posterPath: string | null): string | null {
   return `https://image.tmdb.org/t/p/w500${posterPath}`;
 }
 
-// Build a full backdrop image URL. w1280 gives a good balance
-// for hero backgrounds — large enough to look sharp, but not
-// the full original size.
+// Backdrop images are wider (16:9). w1280 gives good quality
+// without being excessively large.
 export function getBackdropUrl(backdropPath: string | null): string | null {
   if (!backdropPath) return null;
   return `https://image.tmdb.org/t/p/w1280${backdropPath}`;
