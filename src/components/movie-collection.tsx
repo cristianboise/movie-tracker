@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Image from "next/image";
 import { getPlatform } from "@/lib/platforms";
 import { PlatformLogo } from "@/components/platform-logos";
 import type { SortOption, ViewMode } from "@/components/filter-sort-menu";
@@ -204,10 +205,13 @@ export function MovieCollection({
             className="flex w-full items-start gap-3 px-1 py-2.5 text-left transition-colors hover:bg-accent/50"
           >
             {movie.posterUrl ? (
-              <img
+              <Image
                 src={movie.posterUrl}
                 alt={movie.title}
+                width={44}
+                height={64}
                 className="h-16 w-11 shrink-0 rounded object-cover"
+                sizes="44px"
               />
             ) : (
               <div className="flex h-16 w-11 shrink-0 items-center justify-center rounded bg-muted text-[9px] text-muted-foreground">
@@ -259,10 +263,12 @@ export function MovieCollection({
               style={{ aspectRatio: "2/3" }}
             >
               {movie.posterUrl ? (
-                <img
+                <Image
                   src={movie.posterUrl}
                   alt={movie.title}
-                  className="absolute inset-0 h-full w-full object-cover transition-transform group-hover:scale-105"
+                  fill
+                  className="object-cover transition-transform group-hover:scale-105"
+                  sizes="(max-width: 640px) 33vw, (max-width: 768px) 25vw, (max-width: 1024px) 20vw, (max-width: 1280px) 14vw, 12vw"
                 />
               ) : (
                 <div className="absolute inset-0 flex items-center justify-center bg-muted p-1 text-center text-[9px] text-muted-foreground">
@@ -296,10 +302,12 @@ export function MovieCollection({
             style={{ aspectRatio: "2/3" }}
           >
             {movie.posterUrl ? (
-              <img
+              <Image
                 src={movie.posterUrl}
                 alt={movie.title}
-                className="absolute inset-0 h-full w-full object-cover transition-transform group-hover:scale-105"
+                fill
+                className="object-cover transition-transform group-hover:scale-105"
+                sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, (max-width: 1280px) 20vw, 17vw"
               />
             ) : (
               <div className="absolute inset-0 flex items-center justify-center bg-muted p-2 text-center text-xs text-muted-foreground">

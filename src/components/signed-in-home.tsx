@@ -33,6 +33,56 @@ export function SignedInHome({ user }: { user: User }) {
     setAllMovies(movies);
   }, []);
 
+  function handleExportCSV() {
+    if (allMovies.length === 0) return;
+
+    function escapeCSV(value: string | number | null | undefined): string {
+      if (value === null || value === undefined) return "";
+      const str = String(value);
+      if (str.includes(",") || str.includes('"') || str.includes("\n")) {
+        return `"${str.replace(/"/g, '""')}"`;
+      }
+      return str;
+    }
+
+    const headers = ["Title", "Year", "Runtime (min)", "Platforms", "Notes", "Added"];
+
+    const rows = allMovies.map((movie) => {
+      const platforms = movie.platforms
+        .map((p) => {
+          const label = p.platform
+            .replace("_", " ")
+            .replace(/\b\w/g, (c) => c.toUpperCase());
+          return p.resolution ? `${label} ${p.resolution}` : label;
+        })
+        .join("; ");
+
+      const added = new Date(movie.addedAt).toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      });
+
+      return [
+        escapeCSV(movie.title),
+        escapeCSV(movie.year),
+        escapeCSV(movie.runtime),
+        escapeCSV(platforms),
+        escapeCSV(movie.notes),
+        escapeCSV(added),
+      ].join(",");
+    });
+
+    const csv = [headers.join(","), ...rows].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `movie-collection-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
   // Compute platform counts for the filter menu
   const platformCounts: Record<string, number> = {};
   for (const platform of PLATFORMS) {
@@ -48,7 +98,7 @@ export function SignedInHome({ user }: { user: User }) {
         <div className="sticky top-0 z-30 -mx-4 bg-background/95 px-4 pb-2 pt-3 backdrop-blur supports-[backdrop-filter]:bg-background/80">
           <div className="flex items-center gap-2">
             {/* Hamburger menu */}
-            <HamburgerMenu user={user} />
+            <HamburgerMenu user={user} onExportCSV={handleExportCSV} />
 
             {/* Filter/sort/view dropdown */}
             <FilterSortMenu

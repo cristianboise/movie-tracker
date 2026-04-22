@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -192,10 +193,13 @@ export function MovieDetailDialog({
         {/* Backdrop hero */}
         {tmdbData?.backdropUrl ? (
           <div className="relative h-44 w-full overflow-hidden rounded-t-lg">
-            <img
+            <Image
               src={tmdbData.backdropUrl}
               alt=""
-              className="absolute inset-0 h-full w-full object-cover"
+              fill
+              className="object-cover"
+              sizes="(max-width: 640px) 100vw, 448px"
+              priority
             />
             {/* Gradient overlay so text is readable */}
             <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
@@ -234,10 +238,13 @@ export function MovieDetailDialog({
         {/* Poster + metadata */}
         <div className="flex gap-4">
           {movie.posterUrl && (
-            <img
+            <Image
               src={movie.posterUrl}
               alt={movie.title}
+              width={112}
+              height={160}
               className="h-40 w-28 rounded-lg object-cover shadow-md"
+              sizes="112px"
             />
           )}
           <div className="flex-1 space-y-1">

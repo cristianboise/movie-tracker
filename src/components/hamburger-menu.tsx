@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { signOut } from "next-auth/react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import {
@@ -37,7 +38,7 @@ function getInitials(user: User): string {
   return "U";
 }
 
-export function HamburgerMenu({ user }: { user: User }) {
+export function HamburgerMenu({ user, onExportCSV }: { user: User; onExportCSV: () => void }) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -65,11 +66,12 @@ export function HamburgerMenu({ user }: { user: User }) {
         {/* User info with avatar */}
         <div className="flex items-center gap-2.5 px-2 py-2.5">
           {user.image ? (
-            <img
+            <Image
               src={user.image}
               alt=""
+              width={32}
+              height={32}
               className="h-8 w-8 rounded-full"
-              referrerPolicy="no-referrer"
             />
           ) : (
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-xs font-medium text-muted-foreground">
@@ -82,6 +84,10 @@ export function HamburgerMenu({ user }: { user: User }) {
         </div>
         <DropdownMenuSeparator />
         <ThemeToggle />
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={onExportCSV}>
+          Export to CSV
+        </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem
           onClick={() => signOut({ callbackUrl: "/" })}

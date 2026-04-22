@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -262,10 +263,13 @@ export function AddMovieDialog({
                     className="flex w-full items-start gap-3 rounded-lg border p-3 text-left hover:bg-accent transition-colors"
                   >
                     {movie.posterUrl ? (
-                      <img
+                      <Image
                         src={movie.posterUrl}
                         alt={movie.title}
+                        width={56}
+                        height={80}
                         className="h-20 w-14 rounded object-cover"
+                        sizes="56px"
                       />
                     ) : (
                       <div className="flex h-20 w-14 items-center justify-center rounded bg-muted text-xs text-muted-foreground">
@@ -308,10 +312,13 @@ export function AddMovieDialog({
 
             <div className="flex gap-3">
               {selectedMovie.posterUrl && (
-                <img
+                <Image
                   src={selectedMovie.posterUrl}
                   alt={selectedMovie.title}
+                  width={80}
+                  height={112}
                   className="h-28 w-20 rounded object-cover"
+                  sizes="80px"
                 />
               )}
               <div>
