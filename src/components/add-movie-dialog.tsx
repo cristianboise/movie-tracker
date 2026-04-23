@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import {
@@ -38,12 +38,19 @@ type PlatformSelection = {
 export function AddMovieDialog({
   onMovieAdded,
   existingTmdbIds = [],
+  controlledOpen,
+  onControlledOpenChange,
+  initialQuery = "",
 }: {
   onMovieAdded: () => void;
   existingTmdbIds?: number[];
+  controlledOpen?: boolean;
+  onControlledOpenChange?: (open: boolean) => void;
+  initialQuery?: string;
 }) {
   const [step, setStep] = useState<"search" | "select" | "platforms">("search");
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = controlledOpen !== undefined ? controlledOpen : internalOpen;
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [selectedMovie, setSelectedMovie] = useState<SearchResult | null>(null);
@@ -52,6 +59,20 @@ export function AddMovieDialog({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastAdded, setLastAdded] = useState<string | null>(null);
+
+  function setOpen(value: boolean) {
+    setInternalOpen(value);
+    onControlledOpenChange?.(value);
+  }
+
+  // When opened externally with an initialQuery, pre-fill and auto-search
+  useEffect(() => {
+    if (open && initialQuery) {
+      setQuery(initialQuery);
+      runSearch(initialQuery);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, initialQuery]);
 
   function resetDialog() {
     setStep("search");
@@ -76,23 +97,17 @@ export function AddMovieDialog({
     setTimeout(() => setLastAdded(null), 3000);
   }
 
-  async function handleSearch() {
-    if (!query.trim()) return;
-
+  async function runSearch(q: string) {
+    if (!q.trim()) return;
     setLoading(true);
     setError(null);
-
     try {
-      const response = await fetch(
-        `/api/tmdb/search?q=${encodeURIComponent(query)}`
-      );
+      const response = await fetch(`/api/tmdb/search?q=${encodeURIComponent(q)}`);
       const data = await response.json();
-
       if (!response.ok) {
         setError(data.error || "Search failed");
         return;
       }
-
       setResults(data.results);
       setStep("select");
     } catch {
@@ -100,6 +115,10 @@ export function AddMovieDialog({
     } finally {
       setLoading(false);
     }
+  }
+
+  function handleSearch() {
+    runSearch(query);
   }
 
   function handleSelectMovie(movie: SearchResult) {
@@ -165,7 +184,10 @@ export function AddMovieDialog({
       open={open}
       onOpenChange={(isOpen) => {
         setOpen(isOpen);
-        if (!isOpen) resetDialog();
+        if (!isOpen) {
+          resetDialog();
+          onControlledOpenChange?.(false);
+        }
       }}
     >
       <DialogTrigger asChild>

@@ -28,6 +28,10 @@ export function SignedInHome({ user }: { user: User }) {
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const [allMovies, setAllMovies] = useState<Movie[]>([]);
 
+  // Controlled add dialog state (for pre-filling from empty search prompt)
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [addDialogQuery, setAddDialogQuery] = useState("");
+
   // Stable callback for MovieCollection to report loaded movies
   const handleMoviesLoaded = useCallback((movies: Movie[]) => {
     setAllMovies(movies);
@@ -146,6 +150,12 @@ export function SignedInHome({ user }: { user: User }) {
             <AddMovieDialog
               onMovieAdded={() => setRefreshKey((k) => k + 1)}
               existingTmdbIds={allMovies.map((m) => m.tmdbId)}
+              controlledOpen={addDialogOpen}
+              onControlledOpenChange={(open) => {
+                setAddDialogOpen(open);
+                if (!open) setAddDialogQuery("");
+              }}
+              initialQuery={addDialogQuery}
             />
 
             {/* Search input — takes remaining space */}
@@ -204,6 +214,10 @@ export function SignedInHome({ user }: { user: User }) {
           platformFilter={platformFilter}
           viewMode={viewMode}
           onMoviesLoaded={handleMoviesLoaded}
+          onAddWithQuery={(q) => {
+            setAddDialogQuery(q);
+            setAddDialogOpen(true);
+          }}
         />
 
         <MovieDetailDialog

@@ -41,6 +41,7 @@ export function MovieCollection({
   platformFilter,
   viewMode,
   onMoviesLoaded,
+  onAddWithQuery,
 }: {
   onMovieClick: (movie: Movie) => void;
   refreshKey: number;
@@ -49,6 +50,7 @@ export function MovieCollection({
   platformFilter: string | null;
   viewMode: ViewMode;
   onMoviesLoaded: (movies: Movie[]) => void;
+  onAddWithQuery?: (query: string) => void;
 }) {
   const [movies, setMovies] = useState<Movie[]>([]);
   const [loading, setLoading] = useState(true);
@@ -194,7 +196,15 @@ export function MovieCollection({
             <line x1="21" y1="21" x2="16.65" y2="16.65" />
           </svg>
         </div>
-        <p className="text-sm text-muted-foreground">No movies match your filters</p>
+        <p className="text-sm text-muted-foreground">No movies match your search</p>
+        {search && onAddWithQuery && (
+          <button
+            onClick={() => onAddWithQuery(search)}
+            className="mt-1 text-sm font-medium text-foreground underline underline-offset-4 hover:text-muted-foreground transition-colors"
+          >
+            Not in your library? Add &ldquo;{search}&rdquo;
+          </button>
+        )}
       </div>
     );
   }
