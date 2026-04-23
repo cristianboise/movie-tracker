@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Movie Tracker",
+  title: "Digital Movie Library",
   description: "Track your digital movie collection",
 };
 

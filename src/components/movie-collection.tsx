@@ -84,13 +84,18 @@ export function MovieCollection({
     return matchesSearch && matchesPlatform;
   });
 
+  // Strip leading articles so "The Godfather" sorts under G, not T
+  function sortableTitle(title: string) {
+    return title.replace(/^(the|a|an)\s+/i, "").trimStart();
+  }
+
   // Sort
   const sorted = [...filtered].sort((a, b) => {
     switch (sortBy) {
       case "title-asc":
-        return a.title.localeCompare(b.title);
+        return sortableTitle(a.title).localeCompare(sortableTitle(b.title));
       case "title-desc":
-        return b.title.localeCompare(a.title);
+        return sortableTitle(b.title).localeCompare(sortableTitle(a.title));
       case "added":
         return new Date(b.addedAt).getTime() - new Date(a.addedAt).getTime();
       case "year-desc":
