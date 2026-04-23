@@ -98,8 +98,12 @@ export async function getMovieDetail(tmdbId: number): Promise<TmdbMovieDetail> {
   return response.json();
 }
 
-// Get the cast for a specific movie. Returns top 5 billed.
-export async function getMovieCast(tmdbId: number): Promise<TmdbCastMember[]> {
+// Get cast and director for a specific movie in one request.
+// Cast: top 5 billed actors. Director: first crew member with job "Director".
+export async function getMovieCredits(tmdbId: number): Promise<{
+  cast: TmdbCastMember[];
+  director: string | null;
+}> {
   const response = await fetch(`${TMDB_BASE_URL}/movie/${tmdbId}/credits?language=en-US`, {
     headers: getHeaders(),
   });
@@ -109,10 +113,17 @@ export async function getMovieCast(tmdbId: number): Promise<TmdbCastMember[]> {
   }
 
   const data = await response.json();
-  // Return only top 5 billed cast members (sorted by "order")
-  return data.cast
+
+  const cast: TmdbCastMember[] = data.cast
     .sort((a: TmdbCastMember, b: TmdbCastMember) => a.order - b.order)
     .slice(0, 5);
+
+  const directorEntry = data.crew.find(
+    (c: { job: string; name: string }) => c.job === "Director"
+  );
+  const director: string | null = directorEntry?.name ?? null;
+
+  return { cast, director };
 }
 
 // Helper: build a full poster image URL from TMDB's partial path.
@@ -178,9 +189,9 @@ export async function getCachedMovieData(tmdbId: number) {
   }
 
   // Step 2: Cache miss or stale — fetch from TMDB
-  const [detail, cast, externalIds] = await Promise.all([
+  const [detail, credits, externalIds] = await Promise.all([
     getMovieDetail(tmdbId),
-    getMovieCast(tmdbId),
+    getMovieCredits(tmdbId),
     getMovieExternalIds(tmdbId),
   ]);
 
@@ -195,10 +206,11 @@ export async function getCachedMovieData(tmdbId: number) {
     rating: detail.vote_average,
     posterUrl: getPosterUrl(detail.poster_path),
     backdropUrl: getBackdropUrl(detail.backdrop_path),
-    cast: cast.map((c) => ({
+    cast: credits.cast.map((c) => ({
       name: c.name,
       character: c.character,
     })),
+    director: credits.director,
     imdbId: externalIds.imdb_id ?? null,
   };
 

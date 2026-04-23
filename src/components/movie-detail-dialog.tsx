@@ -55,6 +55,7 @@ type TmdbData = {
   posterUrl: string | null;
   backdropUrl: string | null;
   cast: { name: string; character: string }[];
+  director: string | null;
   imdbId: string | null;
 };
 
@@ -299,6 +300,16 @@ export function MovieDetailDialog({
           <p className="text-sm leading-relaxed text-muted-foreground">
             {tmdbData.overview}
           </p>
+        )}
+
+        {/* Director */}
+        {tmdbData?.director && (
+          <div>
+            <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Director
+            </p>
+            <p className="text-sm text-foreground">{tmdbData.director}</p>
+          </div>
         )}
 
         {/* Cast */}
