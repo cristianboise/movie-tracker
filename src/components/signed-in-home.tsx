@@ -94,7 +94,37 @@ export function SignedInHome({ user }: { user: User }) {
   return (
     <main className="min-h-screen bg-background text-foreground">
       <div className="mx-auto max-w-7xl px-4 py-3">
-        {/* Single-row header: search + filter + add + menu */}
+
+        {/* App identity — scrolls away, not sticky */}
+        <div className="flex items-center gap-2.5 pb-3 pt-2">
+          {/* Logo placeholder — replace with <Image> when ready */}
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-foreground">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.75"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="h-4.5 w-4.5 text-background"
+              style={{ color: "var(--background)" }}
+            >
+              {/* Film frame icon */}
+              <rect x="2" y="2" width="20" height="20" rx="2.5" />
+              <line x1="7" y1="2" x2="7" y2="22" />
+              <line x1="17" y1="2" x2="17" y2="22" />
+              <line x1="2" y1="8" x2="7" y2="8" />
+              <line x1="17" y1="8" x2="22" y2="8" />
+              <line x1="2" y1="16" x2="7" y2="16" />
+              <line x1="17" y1="16" x2="22" y2="16" />
+            </svg>
+          </div>
+          <span className="text-lg font-semibold tracking-tight">
+            Digital Movie Library
+          </span>
+        </div>
+
+        {/* Single-row controls: search + filter + add + menu */}
         <div className="sticky top-0 z-30 -mx-4 bg-background/95 px-4 pb-2 pt-3 backdrop-blur supports-[backdrop-filter]:bg-background/80">
           <div className="flex items-center gap-2">
             {/* Hamburger menu */}
@@ -135,7 +165,7 @@ export function SignedInHome({ user }: { user: User }) {
               </svg>
               <input
                 type="text"
-                placeholder="Search Digital Movie Library"
+                placeholder="Search your library"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="w-full rounded-lg border border-input bg-background py-2.5 pl-9 pr-8 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
