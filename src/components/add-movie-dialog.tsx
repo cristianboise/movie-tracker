@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import {
@@ -41,12 +41,14 @@ export function AddMovieDialog({
   controlledOpen,
   onControlledOpenChange,
   initialQuery = "",
+  onViewExisting,
 }: {
   onMovieAdded: () => void;
   existingTmdbIds?: number[];
   controlledOpen?: boolean;
   onControlledOpenChange?: (open: boolean) => void;
   initialQuery?: string;
+  onViewExisting?: (tmdbId: number) => void;
 }) {
   const [step, setStep] = useState<"search" | "platforms">("search");
   const [internalOpen, setInternalOpen] = useState(false);
@@ -65,28 +67,6 @@ export function AddMovieDialog({
     setInternalOpen(value);
     onControlledOpenChange?.(value);
   }
-
-  // Debounced live search — fires 400ms after the user stops typing
-  useEffect(() => {
-    if (!query.trim()) {
-      setResults([]);
-      setHasSearched(false);
-      return;
-    }
-    const timer = setTimeout(() => {
-      runSearch(query);
-    }, 250);
-    return () => clearTimeout(timer);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query]);
-
-  // When opened externally with an initialQuery, pre-fill the query.
-  // The debounce effect above will handle firing the search.
-  useEffect(() => {
-    if (open && initialQuery) {
-      setQuery(initialQuery);
-    }
-  }, [open, initialQuery]);
 
   function resetDialog() {
     setStep("search");
@@ -112,6 +92,38 @@ export function AddMovieDialog({
     setLastAdded(addedTitle);
     setTimeout(() => setLastAdded(null), 3000);
   }
+
+  // Reset when dialog closes, including programmatic closes via controlledOpen
+  const prevOpenRef = useRef(open);
+  useEffect(() => {
+    if (prevOpenRef.current && !open) {
+      resetDialog();
+    }
+    prevOpenRef.current = open;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  // Debounced live search — fires 250ms after the user stops typing
+  useEffect(() => {
+    if (!query.trim()) {
+      setResults([]);
+      setHasSearched(false);
+      return;
+    }
+    const timer = setTimeout(() => {
+      runSearch(query);
+    }, 250);
+    return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query]);
+
+  // When opened externally with an initialQuery, pre-fill the query.
+  // The debounce effect above will handle firing the search.
+  useEffect(() => {
+    if (open && initialQuery) {
+      setQuery(initialQuery);
+    }
+  }, [open, initialQuery]);
 
   async function runSearch(q: string) {
     if (!q.trim()) return;
@@ -378,8 +390,19 @@ export function AddMovieDialog({
               </div>
 
               {isDuplicate ? (
-                <div className="rounded-md bg-amber-500/10 p-3 text-sm text-amber-700 dark:text-amber-400">
-                  This movie is already in your collection. Open it from your collection to edit platforms or notes.
+                <div className="space-y-3">
+                  <div className="rounded-md bg-amber-500/10 p-3 text-sm text-amber-700 dark:text-amber-400">
+                    This movie is already in your collection.
+                  </div>
+                  {onViewExisting && (
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      onClick={() => onViewExisting(selectedMovie.tmdbId)}
+                    >
+                      View &amp; edit in your collection
+                    </Button>
+                  )}
                 </div>
               ) : (
                 <div className="space-y-4">

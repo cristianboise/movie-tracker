@@ -156,6 +156,14 @@ export function SignedInHome({ user }: { user: User }) {
                 if (!open) setAddDialogQuery("");
               }}
               initialQuery={addDialogQuery}
+              onViewExisting={(tmdbId) => {
+                const movie = allMovies.find((m) => m.tmdbId === tmdbId);
+                if (movie) {
+                  setAddDialogOpen(false);
+                  setAddDialogQuery("");
+                  setSelectedMovie(movie);
+                }
+              }}
             />
 
             {/* Search input — takes remaining space */}

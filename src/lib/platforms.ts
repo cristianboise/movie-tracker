@@ -42,7 +42,7 @@ export function getPlatform(id: string) {
 // Sort an array of platform objects by the canonical PLATFORMS order.
 // Pass any array that has a `platform` string field.
 export function sortPlatforms<T extends { platform: string }>(items: T[]): T[] {
-  const order = PLATFORMS.map((p) => p.id);
+  const order: string[] = PLATFORMS.map((p) => p.id);
   return [...items].sort(
     (a, b) => order.indexOf(a.platform) - order.indexOf(b.platform)
   );

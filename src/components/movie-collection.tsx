@@ -26,6 +26,9 @@ export type Movie = {
   posterUrl: string | null;
   notes: string | null;
   addedAt: string;
+  genres: string[];
+  cast: string[];
+  director: string | null;
   platforms: Platform[];
 };
 
@@ -75,15 +78,22 @@ export function MovieCollection({
 
   // Filter
   const filtered = movies.filter((movie) => {
-    const matchesSearch =
-      !search ||
-      movie.title.toLowerCase().includes(search.toLowerCase());
+    if (search) {
+      const q = search.toLowerCase();
+      const matchesTitle = movie.title.toLowerCase().includes(q);
+      const matchesDirector = movie.director?.toLowerCase().includes(q) ?? false;
+      const matchesGenre = movie.genres.some((g) => g.toLowerCase().includes(q));
+      const matchesCast = movie.cast.some((c) => c.toLowerCase().includes(q));
+      if (!matchesTitle && !matchesDirector && !matchesGenre && !matchesCast) {
+        return false;
+      }
+    }
 
-    const matchesPlatform =
-      !platformFilter ||
-      movie.platforms.some((p) => p.platform === platformFilter);
+    if (platformFilter && !movie.platforms.some((p) => p.platform === platformFilter)) {
+      return false;
+    }
 
-    return matchesSearch && matchesPlatform;
+    return true;
   });
 
   // Strip leading articles so "The Godfather" sorts under G, not T
