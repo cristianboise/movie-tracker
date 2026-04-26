@@ -1,8 +1,8 @@
 import { db } from "@/db";
-import { movies, moviePlatforms, tmdbCache } from "@/db/schema";
+import { movies, moviePlatforms } from "@/db/schema";
 import { getCachedMovieData } from "@/lib/tmdb";
 import { getAuthenticatedUserId } from "@/lib/get-user";
-import { eq, desc, inArray } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
 const VALID_PLATFORMS = ["apple", "fandango", "amazon", "movies_anywhere"];
@@ -121,27 +121,11 @@ export async function GET(request: NextRequest) {
   try {
     const platformFilter = request.nextUrl.searchParams.get("platform");
 
-    let userMovies = await db
+    const userMovies = await db
       .select()
       .from(movies)
       .where(eq(movies.userId, userId))
       .orderBy(desc(movies.addedAt));
-
-    // Batch-fetch TMDB cache for search metadata (genres, cast, director)
-    const tmdbIds = userMovies.map((m) => m.tmdbId);
-    const cacheRows = tmdbIds.length > 0
-      ? await db.select().from(tmdbCache).where(inArray(tmdbCache.tmdbId, tmdbIds))
-      : [];
-
-    const cacheByTmdbId: Record<number, { genres: string[]; cast: { name: string }[]; director: string | null }> = {};
-    for (const row of cacheRows) {
-      const payload = JSON.parse(row.payloadJson);
-      cacheByTmdbId[row.tmdbId] = {
-        genres: payload.genres ?? [],
-        cast: payload.cast ?? [],
-        director: payload.director ?? null,
-      };
-    }
 
     const moviesWithPlatforms = await Promise.all(
       userMovies.map(async (movie) => {
@@ -150,7 +134,10 @@ export async function GET(request: NextRequest) {
           .from(moviePlatforms)
           .where(eq(moviePlatforms.movieId, movie.id));
 
-        const cached = cacheByTmdbId[movie.tmdbId];
+        // Parse metadata stored at insert time — always present, always has genres/cast
+        const metadata = movie.tmdbMetadataJson
+          ? JSON.parse(movie.tmdbMetadataJson)
+          : null;
 
         return {
           id: movie.id,
@@ -161,9 +148,9 @@ export async function GET(request: NextRequest) {
           posterUrl: movie.posterUrl,
           notes: movie.notes,
           addedAt: movie.addedAt,
-          genres: cached?.genres ?? [],
-          cast: cached?.cast.map((c) => c.name) ?? [],
-          director: cached?.director ?? null,
+          genres: metadata?.genres ?? [],
+          cast: metadata?.cast?.map((c: { name: string }) => c.name) ?? [],
+          director: metadata?.director ?? null,
           platforms: platforms.map((p) => ({
             id: p.id,
             platform: p.platform,
