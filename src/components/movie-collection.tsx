@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Image from "next/image";
-import { getPlatform } from "@/lib/platforms";
+import { getPlatform, sortPlatforms } from "@/lib/platforms";
 import { PlatformLogo } from "@/components/platform-logos";
 import type { SortOption, ViewMode } from "@/components/filter-sort-menu";
 
@@ -239,7 +239,7 @@ export function MovieCollection({
                 {movie.year}{movie.runtime ? ` \u00B7 ${movie.runtime} min` : ""}
               </p>
               <div className="mt-1 flex flex-wrap gap-1">
-                {movie.platforms.map((p) => {
+                {sortPlatforms(movie.platforms).map((p) => {
                   const config = getPlatform(p.platform);
                   return (
                     <span
@@ -341,7 +341,7 @@ export function MovieCollection({
             {movie.title}
           </p>
           <div className="mt-0.5 flex flex-wrap gap-0.5">
-            {movie.platforms.map((p) => {
+            {sortPlatforms(movie.platforms).map((p) => {
               const config = getPlatform(p.platform);
               return (
                 <span

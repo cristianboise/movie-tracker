@@ -38,3 +38,12 @@ export const DEFAULT_RESOLUTION = "4K";
 export function getPlatform(id: string) {
   return PLATFORMS.find((p) => p.id === id);
 }
+
+// Sort an array of platform objects by the canonical PLATFORMS order.
+// Pass any array that has a `platform` string field.
+export function sortPlatforms<T extends { platform: string }>(items: T[]): T[] {
+  const order = PLATFORMS.map((p) => p.id);
+  return [...items].sort(
+    (a, b) => order.indexOf(a.platform) - order.indexOf(b.platform)
+  );
+}

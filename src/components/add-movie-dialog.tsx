@@ -48,7 +48,7 @@ export function AddMovieDialog({
   onControlledOpenChange?: (open: boolean) => void;
   initialQuery?: string;
 }) {
-  const [step, setStep] = useState<"search" | "select" | "platforms">("search");
+  const [step, setStep] = useState<"search" | "platforms">("search");
   const [internalOpen, setInternalOpen] = useState(false);
   const open = controlledOpen !== undefined ? controlledOpen : internalOpen;
   const [query, setQuery] = useState("");
@@ -59,25 +59,40 @@ export function AddMovieDialog({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastAdded, setLastAdded] = useState<string | null>(null);
+  const [hasSearched, setHasSearched] = useState(false);
 
   function setOpen(value: boolean) {
     setInternalOpen(value);
     onControlledOpenChange?.(value);
   }
 
-  // When opened externally with an initialQuery, pre-fill and auto-search
+  // Debounced live search — fires 400ms after the user stops typing
+  useEffect(() => {
+    if (!query.trim()) {
+      setResults([]);
+      setHasSearched(false);
+      return;
+    }
+    const timer = setTimeout(() => {
+      runSearch(query);
+    }, 250);
+    return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query]);
+
+  // When opened externally with an initialQuery, pre-fill the query.
+  // The debounce effect above will handle firing the search.
   useEffect(() => {
     if (open && initialQuery) {
       setQuery(initialQuery);
-      runSearch(initialQuery);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, initialQuery]);
 
   function resetDialog() {
     setStep("search");
     setQuery("");
     setResults([]);
+    setHasSearched(false);
     setSelectedMovie(null);
     setPlatformSelections([]);
     setNotes("");
@@ -89,6 +104,7 @@ export function AddMovieDialog({
     setStep("search");
     setQuery("");
     setResults([]);
+    setHasSearched(false);
     setSelectedMovie(null);
     setPlatformSelections([]);
     setNotes("");
@@ -109,16 +125,12 @@ export function AddMovieDialog({
         return;
       }
       setResults(data.results);
-      setStep("select");
+      setHasSearched(true);
     } catch {
       setError("Failed to search. Check your connection.");
     } finally {
       setLoading(false);
     }
-  }
-
-  function handleSearch() {
-    runSearch(query);
   }
 
   function handleSelectMovie(movie: SearchResult) {
@@ -191,7 +203,6 @@ export function AddMovieDialog({
       }}
     >
       <DialogTrigger asChild>
-        {/* Compact + icon for the header row */}
         <button
           className="flex h-10 w-10 items-center justify-center rounded-lg text-foreground hover:bg-accent transition-colors"
           aria-label="Add movie"
@@ -215,9 +226,7 @@ export function AddMovieDialog({
       <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="text-lg">
-            {step === "search" && "Add Movie"}
-            {step === "select" && "Select a Movie"}
-            {step === "platforms" && selectedMovie?.title}
+            {step === "search" ? "Add Movie" : selectedMovie?.title}
           </DialogTitle>
         </DialogHeader>
 
@@ -233,50 +242,67 @@ export function AddMovieDialog({
           </div>
         )}
 
-        {/* STEP 1: Search */}
+        {/* SEARCH — input + live results */}
         {step === "search" && (
-          <div className="space-y-4">
+          <div className="space-y-3">
+            {/* Search input */}
             <form
               onSubmit={(e) => {
                 e.preventDefault();
-                handleSearch();
+                runSearch(query);
               }}
-              className="flex gap-2"
             >
-              <input
-                type="text"
-                placeholder="Movie title..."
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                autoFocus
-                className="flex-1 rounded-lg border border-input bg-background px-3 py-2.5 text-base text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-              />
-              <Button type="submit" disabled={loading || !query.trim()}>
-                {loading ? "..." : "Search"}
-              </Button>
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Movie title..."
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  autoFocus
+                  className="w-full rounded-lg border border-input bg-background px-3 py-2.5 pr-9 text-base text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+                {/* Spinner while loading, × when idle with text */}
+                {loading ? (
+                  <svg
+                    className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                  >
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                  </svg>
+                ) : query ? (
+                  <button
+                    type="button"
+                    onClick={() => setQuery("")}
+                    className="absolute right-2.5 top-1/2 z-10 -translate-y-1/2 rounded p-0.5 text-muted-foreground hover:text-foreground"
+                    aria-label="Clear search"
+                  >
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="h-3.5 w-3.5"
+                    >
+                      <line x1="18" y1="6" x2="6" y2="18" />
+                      <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                  </button>
+                ) : null}
+              </div>
             </form>
-          </div>
-        )}
 
-        {/* STEP 2: Select from results */}
-        {step === "select" && (
-          <div className="space-y-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                setStep("search");
-                setResults([]);
-              }}
-            >
-              &larr; Back to search
-            </Button>
-
-            {results.length === 0 ? (
+            {/* Live results */}
+            {hasSearched && !loading && results.length === 0 && (
               <p className="text-sm text-muted-foreground">
                 No results found. Try a different title.
               </p>
-            ) : (
+            )}
+
+            {results.length > 0 && (
               <div className="space-y-2">
                 {results.slice(0, 10).map((movie) => (
                   <button
@@ -316,122 +342,122 @@ export function AddMovieDialog({
           </div>
         )}
 
-        {/* STEP 3: Choose platforms */}
+        {/* PLATFORMS — movie selected, choose where you own it */}
         {step === "platforms" && selectedMovie && (() => {
           const isDuplicate = existingTmdbIds.includes(selectedMovie.tmdbId);
           return (
-          <div className="space-y-4">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                setStep("select");
-                setPlatformSelections([]);
-              }}
-            >
-              &larr; Back to results
-            </Button>
-
-            <div className="flex gap-3">
-              {selectedMovie.posterUrl && (
-                <Image
-                  src={selectedMovie.posterUrl}
-                  alt={selectedMovie.title}
-                  width={80}
-                  height={112}
-                  className="h-28 w-20 rounded object-cover"
-                  sizes="80px"
-                />
-              )}
-              <div>
-                <p className="text-base font-medium">{selectedMovie.title}</p>
-                <p className="text-sm text-muted-foreground">
-                  {selectedMovie.year}
-                </p>
-              </div>
-            </div>
-
-            {isDuplicate ? (
-              <div className="rounded-md bg-amber-500/10 p-3 text-sm text-amber-700 dark:text-amber-400">
-                This movie is already in your collection. Open it from your collection to edit platforms or notes.
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div>
-                  <p className="mb-1 text-sm font-medium">Notes</p>
-                  <input
-                    type="text"
-                    placeholder="e.g., Director's cut, Extended edition..."
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    className="w-full rounded-lg border border-input bg-background px-3 py-2.5 text-base text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                  />
-                </div>
-                <div>
-                <p className="mb-2 text-sm font-medium">
-                  Where do you own this movie?
-                </p>
-                <div className="space-y-2">
-                  {PLATFORMS.map((platform) => {
-                    const isSelected = platformSelections.some(
-                      (p) => p.platform === platform.id
-                    );
-                    const selection = platformSelections.find(
-                      (p) => p.platform === platform.id
-                    );
-
-                    return (
-                      <div key={platform.id} className="space-y-1">
-                        <button
-                          onClick={() => togglePlatform(platform.id)}
-                          className={`flex w-full items-center gap-3 rounded-lg border p-3 text-left text-sm font-medium transition-colors ${
-                            isSelected
-                              ? `${platform.bgClass} ${platform.textClass} border-transparent`
-                              : "hover:bg-accent"
-                          }`}
-                        >
-                          <PlatformLogo
-                            platformId={platform.id}
-                            className="h-5 w-5 shrink-0"
-                          />
-                          {platform.label}
-                        </button>
-
-                        {isSelected && (
-                          <div className="flex gap-1 pl-3">
-                            {RESOLUTIONS.map((res) => (
-                              <button
-                                key={res}
-                                onClick={() => setResolution(platform.id, res)}
-                                className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
-                                  selection?.resolution === res
-                                    ? "bg-foreground text-background"
-                                    : "border border-input text-muted-foreground hover:text-foreground"
-                                }`}
-                              >
-                                {res}
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-                </div>
-              </div>
-            )}
-
-            {!isDuplicate && (
+            <div className="space-y-4">
               <Button
-                className="w-full text-base"
-                disabled={platformSelections.length === 0 || loading}
-                onClick={handleSave}
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setStep("search");
+                  setPlatformSelections([]);
+                }}
               >
-                {loading ? "Adding..." : "Add to Collection"}
+                &larr; Back to results
               </Button>
-            )}
-          </div>
+
+              <div className="flex gap-3">
+                {selectedMovie.posterUrl && (
+                  <Image
+                    src={selectedMovie.posterUrl}
+                    alt={selectedMovie.title}
+                    width={80}
+                    height={112}
+                    className="h-28 w-20 rounded object-cover"
+                    sizes="80px"
+                  />
+                )}
+                <div>
+                  <p className="text-base font-medium">{selectedMovie.title}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {selectedMovie.year}
+                  </p>
+                </div>
+              </div>
+
+              {isDuplicate ? (
+                <div className="rounded-md bg-amber-500/10 p-3 text-sm text-amber-700 dark:text-amber-400">
+                  This movie is already in your collection. Open it from your collection to edit platforms or notes.
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div>
+                    <p className="mb-1 text-sm font-medium">Notes</p>
+                    <input
+                      type="text"
+                      placeholder="e.g., Director's cut, Extended edition..."
+                      value={notes}
+                      onChange={(e) => setNotes(e.target.value)}
+                      className="w-full rounded-lg border border-input bg-background px-3 py-2.5 text-base text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                    />
+                  </div>
+                  <div>
+                    <p className="mb-2 text-sm font-medium">
+                      Where do you own this movie?
+                    </p>
+                    <div className="space-y-2">
+                      {PLATFORMS.map((platform) => {
+                        const isSelected = platformSelections.some(
+                          (p) => p.platform === platform.id
+                        );
+                        const selection = platformSelections.find(
+                          (p) => p.platform === platform.id
+                        );
+
+                        return (
+                          <div key={platform.id} className="space-y-1">
+                            <button
+                              onClick={() => togglePlatform(platform.id)}
+                              className={`flex w-full items-center gap-3 rounded-lg border p-3 text-left text-sm font-medium transition-colors ${
+                                isSelected
+                                  ? `${platform.bgClass} ${platform.textClass} border-transparent`
+                                  : "hover:bg-accent"
+                              }`}
+                            >
+                              <PlatformLogo
+                                platformId={platform.id}
+                                className="h-5 w-5 shrink-0"
+                              />
+                              {platform.label}
+                            </button>
+
+                            {isSelected && (
+                              <div className="flex gap-1 pl-3">
+                                {RESOLUTIONS.map((res) => (
+                                  <button
+                                    key={res}
+                                    onClick={() => setResolution(platform.id, res)}
+                                    className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                                      selection?.resolution === res
+                                        ? "bg-foreground text-background"
+                                        : "border border-input text-muted-foreground hover:text-foreground"
+                                    }`}
+                                  >
+                                    {res}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {!isDuplicate && (
+                <Button
+                  className="w-full text-base"
+                  disabled={platformSelections.length === 0 || loading}
+                  onClick={handleSave}
+                >
+                  {loading ? "Adding..." : "Add to Collection"}
+                </Button>
+              )}
+            </div>
           );
         })()}
       </DialogContent>

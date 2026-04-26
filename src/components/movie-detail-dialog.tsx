@@ -17,7 +17,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { PLATFORMS, RESOLUTIONS, DEFAULT_RESOLUTION, getPlatform } from "@/lib/platforms";
+import { PLATFORMS, RESOLUTIONS, DEFAULT_RESOLUTION, getPlatform, sortPlatforms } from "@/lib/platforms";
 import { PlatformLogo } from "@/components/platform-logos";
 
 // ============================================================
@@ -441,7 +441,7 @@ export function MovieDetailDialog({
                 </p>
               )}
               <div className="flex flex-wrap gap-1.5">
-                {movie.platforms.map((p) => {
+                {sortPlatforms(movie.platforms).map((p) => {
                   const config = getPlatform(p.platform);
                   return (
                     <span
