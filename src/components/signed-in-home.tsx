@@ -107,20 +107,22 @@ export function SignedInHome({ user }: { user: User }) {
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
-              strokeWidth="1.75"
+              strokeWidth="1.6"
               strokeLinecap="round"
               strokeLinejoin="round"
-              className="h-4.5 w-4.5 text-background"
+              className="h-4.5 w-4.5"
               style={{ color: "var(--background)" }}
             >
-              {/* Film frame icon */}
-              <rect x="2" y="2" width="20" height="20" rx="2.5" />
-              <line x1="7" y1="2" x2="7" y2="22" />
-              <line x1="17" y1="2" x2="17" y2="22" />
-              <line x1="2" y1="8" x2="7" y2="8" />
-              <line x1="17" y1="8" x2="22" y2="8" />
-              <line x1="2" y1="16" x2="7" y2="16" />
-              <line x1="17" y1="16" x2="22" y2="16" />
+              {/* Clapperboard body */}
+              <rect x="2" y="12" width="20" height="10" rx="2" />
+              {/* Clapper arm — open */}
+              <g transform="rotate(-8 2 12)">
+                <rect x="2" y="5" width="20" height="7" rx="2" />
+                {/* Diagonal stripes */}
+                <line x1="8"  y1="5" x2="6"  y2="12" />
+                <line x1="13" y1="5" x2="11" y2="12" />
+                <line x1="18" y1="5" x2="16" y2="12" />
+              </g>
             </svg>
           </div>
           <span className="text-lg font-semibold tracking-tight">
