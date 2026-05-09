@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { AddMovieDialog } from "@/components/add-movie-dialog";
 import { MovieCollection } from "@/components/movie-collection";
 import type { Movie } from "@/components/movie-collection";
@@ -23,9 +23,18 @@ export function SignedInHome({ user }: { user: User }) {
 
   // Lifted search/filter/sort/view state
   const [search, setSearch] = useState("");
-  const [sortBy, setSortBy] = useState<SortOption>("title-asc");
+  const [sortBy, setSortBy] = useState<SortOption>(() => {
+    if (typeof window === "undefined") return "title-asc";
+    return (localStorage.getItem("sortBy") as SortOption) ?? "title-asc";
+  });
   const [platformFilter, setPlatformFilter] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<ViewMode>("grid");
+  const [viewMode, setViewMode] = useState<ViewMode>(() => {
+    if (typeof window === "undefined") return "grid";
+    return (localStorage.getItem("viewMode") as ViewMode) ?? "grid";
+  });
+
+  useEffect(() => { localStorage.setItem("sortBy", sortBy); }, [sortBy]);
+  useEffect(() => { localStorage.setItem("viewMode", viewMode); }, [viewMode]);
   const [allMovies, setAllMovies] = useState<Movie[]>([]);
 
   // Controlled add dialog state (for pre-filling from empty search prompt)
