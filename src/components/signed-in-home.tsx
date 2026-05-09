@@ -23,15 +23,16 @@ export function SignedInHome({ user }: { user: User }) {
 
   // Lifted search/filter/sort/view state
   const [search, setSearch] = useState("");
-  const [sortBy, setSortBy] = useState<SortOption>(() => {
-    if (typeof window === "undefined") return "title-asc";
-    return (localStorage.getItem("sortBy") as SortOption) ?? "title-asc";
-  });
+  const [sortBy, setSortBy] = useState<SortOption>("title-asc");
   const [platformFilter, setPlatformFilter] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<ViewMode>(() => {
-    if (typeof window === "undefined") return "grid";
-    return (localStorage.getItem("viewMode") as ViewMode) ?? "grid";
-  });
+  const [viewMode, setViewMode] = useState<ViewMode>("grid");
+
+  useEffect(() => {
+    const savedSort = localStorage.getItem("sortBy") as SortOption | null;
+    const savedView = localStorage.getItem("viewMode") as ViewMode | null;
+    if (savedSort) setSortBy(savedSort);
+    if (savedView) setViewMode(savedView);
+  }, []);
 
   useEffect(() => { localStorage.setItem("sortBy", sortBy); }, [sortBy]);
   useEffect(() => { localStorage.setItem("viewMode", viewMode); }, [viewMode]);
