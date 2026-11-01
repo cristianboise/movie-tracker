@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext } from "react";
+import { createContext, useContext, useEffect, useRef } from "react";
 import { Dialog as DialogPrimitive } from "radix-ui";
 import { XIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -42,13 +42,30 @@ export function ResponsiveModal({
   children: React.ReactNode;
   // Extra classes for the desktop dialog only
   className?: string;
-  // No padding, so the content can run edge to edge (desktop dialog and sheet)
+  // No padding, so the content can run edge to edge
   flush?: boolean;
   mobile?: "sheet" | "fullscreen";
 }) {
   const isDesktop = useIsDesktop();
   const viewport = useVisualViewport();
   const mode: Mode = isDesktop ? "dialog" : mobile;
+
+  // When the keyboard opens or closes, keep the text box you're typing in on
+  // screen. Safari usually does this itself, but not reliably inside a
+  // scrolling panel.
+  const scrollerRef = useRef<HTMLDivElement>(null);
+  const viewportHeight = viewport?.height;
+  useEffect(() => {
+    if (mode !== "fullscreen") return;
+    const focused = document.activeElement;
+    if (
+      focused instanceof HTMLElement &&
+      scrollerRef.current?.contains(focused) &&
+      focused.matches("input, textarea, select")
+    ) {
+      focused.scrollIntoView({ block: "center" });
+    }
+  }, [mode, viewportHeight]);
 
   return (
     <ModalContext.Provider value={{ mode }}>
@@ -83,7 +100,13 @@ export function ResponsiveModal({
               }}
               className="fixed inset-x-0 z-50 flex flex-col bg-popover text-sm text-popover-foreground outline-none data-open:animate-in data-open:fade-in-0"
             >
-              <div className="flex-1 overflow-y-auto overscroll-contain px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-4">
+              <div
+                ref={scrollerRef}
+                className={cn(
+                  "flex-1 overflow-y-auto overscroll-contain pb-[calc(1rem+env(safe-area-inset-bottom))]",
+                  !flush && "px-4 pt-4"
+                )}
+              >
                 {children}
               </div>
               {/* After the content in the DOM, so the first thing focused on open

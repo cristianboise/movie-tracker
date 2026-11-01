@@ -180,6 +180,8 @@ export function MovieDetailDialog({
         if (!isOpen) onClose();
       }}
       flush
+      // It has a Notes box, and bottom sheets don't cope with the phone keyboard
+      mobile="fullscreen"
     >
       {/* Backdrop hero */}
       {tmdbData?.backdropUrl ? (
@@ -206,7 +208,7 @@ export function MovieDetailDialog({
         </div>
       ) : (
         <div className="px-6 pt-4">
-          <DialogHeader>
+          <DialogHeader className="pr-8">
             <ModalTitle className="text-xl">{movie.title}</ModalTitle>
           </DialogHeader>
           <p className="mt-1 text-sm text-muted-foreground">{yearRuntime}</p>
