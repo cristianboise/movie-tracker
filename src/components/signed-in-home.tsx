@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { AddMovieDialog } from "@/components/add-movie-dialog";
 import { MovieCollection } from "@/components/movie-collection";
 import type { Movie } from "@/components/movie-collection";
@@ -26,6 +26,20 @@ export function SignedInHome({ user }: { user: User }) {
   const [sortBy, setSortBy] = useState<SortOption>("title-asc");
   const [platformFilter, setPlatformFilter] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
+
+  useEffect(() => {
+    const savedSort = localStorage.getItem("sortBy") as SortOption | null;
+    const savedView = localStorage.getItem("viewMode") as ViewMode | null;
+    // Read after mount (not in useState) so server and client render the same
+    // HTML. Setting state here is intentional.
+    /* eslint-disable react-hooks/set-state-in-effect */
+    if (savedSort) setSortBy(savedSort);
+    if (savedView) setViewMode(savedView);
+    /* eslint-enable react-hooks/set-state-in-effect */
+  }, []);
+
+  useEffect(() => { localStorage.setItem("sortBy", sortBy); }, [sortBy]);
+  useEffect(() => { localStorage.setItem("viewMode", viewMode); }, [viewMode]);
   const [allMovies, setAllMovies] = useState<Movie[]>([]);
 
   // Controlled add dialog state (for pre-filling from empty search prompt)
