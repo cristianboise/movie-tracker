@@ -3,6 +3,7 @@ import { movies, moviePlatforms } from "@/db/schema";
 import { getCachedTitle } from "@/lib/tmdb";
 import { getPosterUrl } from "@/lib/tmdb-mappers";
 import { findSeasonError } from "@/lib/titles";
+import { countSeasons } from "@/lib/ownership";
 import { getAuthenticatedUserId } from "@/lib/get-user";
 import { badRequest, parseJsonBody, serverError, unauthorized } from "@/lib/api";
 import { createMovieSchema } from "@/lib/schemas";
@@ -163,6 +164,8 @@ export async function GET(request: NextRequest) {
         cast: metadata?.cast?.map((c: { name: string }) => c.name) ?? [],
         director: metadata?.director ?? null,
         creators: metadata?.creators ?? [],
+        // TV only: seasons you could own, for "3 of 5 seasons"
+        totalSeasons: countSeasons(metadata?.seasons),
         platforms: (platformsByMovie.get(movie.id) ?? []).map((p) => ({
           id: p.id,
           platform: p.platform,

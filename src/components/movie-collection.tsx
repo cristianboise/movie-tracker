@@ -5,6 +5,8 @@ import Image from "next/image";
 import { Film, Search, Tv } from "lucide-react";
 import { PlatformChips } from "@/components/platform-chips";
 import { filterAndSort } from "@/lib/library";
+import { formatRuntime } from "@/lib/format";
+import { ownershipLabel } from "@/lib/ownership";
 import type { SortOption, TypeFilter, ViewMode } from "@/lib/library";
 import { getPosterUrl, type MediaType, type PosterSize } from "@/lib/tmdb-mappers";
 
@@ -34,6 +36,7 @@ export type Movie = {
   cast: string[];
   director: string | null;
   creators: string[];
+  totalSeasons: number | null;
   platforms: Platform[];
 };
 
@@ -89,6 +92,14 @@ function TvBadge() {
       <span className="sr-only">TV show</span>
     </span>
   );
+}
+
+// "3 of 5 seasons" / "Complete series" under a TV show
+function SeasonSummary({ movie }: { movie: Movie }) {
+  if (movie.mediaType !== "tv") return null;
+  const label = ownershipLabel(movie.platforms, movie.totalSeasons);
+  if (!label) return null;
+  return <p className="mt-1 text-xs text-muted-foreground">{label}</p>;
 }
 
 // ============================================================
@@ -202,7 +213,7 @@ export function MovieCollection({
           <div>
             <p className="font-medium">Your collection is empty</p>
             <p className="mt-1 text-sm text-muted-foreground">
-              Tap <span className="font-semibold">+</span> to add your first movie
+              Tap <span className="font-semibold">+</span> to add your first movie or show
             </p>
           </div>
         </div>
@@ -244,9 +255,12 @@ export function MovieCollection({
               <p className="text-xs text-muted-foreground">
                 {movie.mediaType === "tv" && "TV · "}
                 {movie.year}
-                {movie.runtime ? ` · ${movie.runtime} min` : ""}
+                {formatRuntime(movie.mediaType, movie.runtime)
+                  ? ` · ${formatRuntime(movie.mediaType, movie.runtime)}`
+                  : ""}
               </p>
               <PlatformChips platforms={movie.platforms} className="mt-1" />
+              <SeasonSummary movie={movie} />
             </div>
           </button>
         ))}
@@ -320,6 +334,7 @@ export function MovieCollection({
           </div>
           <p className="mt-1.5 w-full truncate text-sm font-medium">{movie.title}</p>
           <PlatformChips platforms={movie.platforms} className="mt-0.5" />
+          <SeasonSummary movie={movie} />
         </button>
       ))}
     </div>
