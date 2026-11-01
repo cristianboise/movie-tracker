@@ -6,14 +6,22 @@ import { ArrowLeft, LoaderCircle, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DialogHeader } from "@/components/ui/dialog";
 import { ResponsiveModal, ModalTitle } from "@/components/ui/responsive-modal";
-import { PlatformPicker, type PlatformSelection } from "@/components/platform-picker";
-import { getPosterUrl } from "@/lib/tmdb-mappers";
+import { PlatformPicker } from "@/components/platform-picker";
+import {
+  selectionsAreValid,
+  toEntries,
+  toSeasonOptions,
+  type PlatformSelection,
+  type SeasonOption,
+} from "@/lib/ownership";
+import { getPosterUrl, type MediaType } from "@/lib/tmdb-mappers";
 
 // ============================================================
 // TYPES
 // ============================================================
 
 type SearchResult = {
+  mediaType: MediaType;
   tmdbId: number;
   title: string;
   year: string | null;
@@ -21,6 +29,15 @@ type SearchResult = {
   posterPath: string | null;
   rating: number;
 };
+
+// What to search: both kinds together, or just one
+type SearchType = "multi" | MediaType;
+
+const SEARCH_TYPES: { value: SearchType; label: string }[] = [
+  { value: "multi", label: "All" },
+  { value: "movie", label: "Movies" },
+  { value: "tv", label: "TV Shows" },
+];
 
 // ============================================================
 // COMPONENT
@@ -32,19 +49,21 @@ export function AddMovieDialog({
   open,
   onOpenChange,
   onMovieAdded,
-  existingTmdbIds = [],
+  existingTitles = [],
   initialQuery = "",
   onViewExisting,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onMovieAdded: () => void;
-  existingTmdbIds?: number[];
+  // Titles already in the library, to catch duplicates
+  existingTitles?: { mediaType: MediaType; tmdbId: number }[];
   initialQuery?: string;
-  onViewExisting?: (tmdbId: number) => void;
+  onViewExisting?: (mediaType: MediaType, tmdbId: number) => void;
 }) {
   const [step, setStep] = useState<"search" | "platforms">("search");
   const [query, setQuery] = useState("");
+  const [searchType, setSearchType] = useState<SearchType>("multi");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [selectedMovie, setSelectedMovie] = useState<SearchResult | null>(null);
   const [platformSelections, setPlatformSelections] = useState<PlatformSelection[]>([]);
@@ -54,13 +73,22 @@ export function AddMovieDialog({
   const [lastAdded, setLastAdded] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
 
+  // TV shows need their season list before you can say which seasons you own
+  const [seasons, setSeasons] = useState<SeasonOption[] | null>(null);
+  const [seasonsLoading, setSeasonsLoading] = useState(false);
+  const [seasonsError, setSeasonsError] = useState(false);
+
   // Only the most recent search may update the results. Without this a slow
   // response for "inc" can land after the one for "inception".
   const searchIdRef = useRef(0);
+  const seasonsIdRef = useRef(0);
 
   function resetDialog() {
+    searchIdRef.current += 1;
+    seasonsIdRef.current += 1;
     setStep("search");
     setQuery("");
+    setSearchType("multi");
     setResults([]);
     setHasSearched(false);
     setSelectedMovie(null);
@@ -68,6 +96,9 @@ export function AddMovieDialog({
     setNotes("");
     setError(null);
     setLastAdded(null);
+    setSeasons(null);
+    setSeasonsLoading(false);
+    setSeasonsError(false);
   }
 
   function resetForNextSearch(addedTitle: string) {
@@ -85,7 +116,8 @@ export function AddMovieDialog({
     prevOpenRef.current = open;
   }, [open]);
 
-  // Debounced live search — fires 250ms after the user stops typing
+  // Debounced live search — fires 250ms after the user stops typing,
+  // and straight away-ish when the Movies/TV toggle changes
   useEffect(() => {
     if (!query.trim()) {
       searchIdRef.current += 1;
@@ -95,11 +127,10 @@ export function AddMovieDialog({
       return;
     }
     const timer = setTimeout(() => {
-      runSearch(query);
+      runSearch(query, searchType);
     }, 250);
     return () => clearTimeout(timer);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query]);
+  }, [query, searchType]);
 
   // When opened externally with an initialQuery, pre-fill the query.
   // The debounce effect above will handle firing the search.
@@ -109,13 +140,15 @@ export function AddMovieDialog({
     }
   }, [open, initialQuery]);
 
-  async function runSearch(q: string) {
+  async function runSearch(q: string, type: SearchType) {
     if (!q.trim()) return;
     const searchId = ++searchIdRef.current;
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`/api/tmdb/search?q=${encodeURIComponent(q)}`);
+      const response = await fetch(
+        `/api/tmdb/search?q=${encodeURIComponent(q)}&type=${type}`
+      );
       const data = await response.json();
       if (searchId !== searchIdRef.current) return;
       if (!response.ok) {
@@ -132,13 +165,43 @@ export function AddMovieDialog({
     }
   }
 
-  function handleSelectMovie(movie: SearchResult) {
-    setSelectedMovie(movie);
+  async function loadSeasons(tmdbId: number) {
+    const loadId = ++seasonsIdRef.current;
+    setSeasons(null);
+    setSeasonsLoading(true);
+    setSeasonsError(false);
+    try {
+      const response = await fetch(`/api/tmdb/movie?id=${tmdbId}&type=tv`);
+      const data = await response.json();
+      if (loadId !== seasonsIdRef.current) return;
+      if (!response.ok) throw new Error(data.error);
+      setSeasons(toSeasonOptions(data.seasons));
+    } catch {
+      if (loadId !== seasonsIdRef.current) return;
+      setSeasonsError(true);
+    } finally {
+      if (loadId === seasonsIdRef.current) setSeasonsLoading(false);
+    }
+  }
+
+  function handleSelectMovie(result: SearchResult) {
+    setSelectedMovie(result);
+    setPlatformSelections([]);
     setStep("platforms");
+    if (result.mediaType === "tv") loadSeasons(result.tmdbId);
+  }
+
+  function handleBack() {
+    seasonsIdRef.current += 1;
+    setStep("search");
+    setPlatformSelections([]);
+    setSeasons(null);
+    setSeasonsLoading(false);
+    setSeasonsError(false);
   }
 
   async function handleSave() {
-    if (!selectedMovie || platformSelections.length === 0) return;
+    if (!selectedMovie || !selectionsAreValid(platformSelections)) return;
 
     setLoading(true);
     setError(null);
@@ -148,8 +211,9 @@ export function AddMovieDialog({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          mediaType: selectedMovie.mediaType,
           tmdbId: selectedMovie.tmdbId,
-          platforms: platformSelections,
+          platforms: toEntries(platformSelections),
           notes: notes.trim() || null,
         }),
       });
@@ -157,7 +221,7 @@ export function AddMovieDialog({
       const data = await response.json();
 
       if (!response.ok) {
-        setError(data.error || "Failed to add movie");
+        setError(data.error || "Failed to add title");
         return;
       }
 
@@ -174,7 +238,7 @@ export function AddMovieDialog({
     <ResponsiveModal open={open} onOpenChange={onOpenChange}>
       <DialogHeader>
         <ModalTitle className="text-lg">
-          {step === "search" ? "Add Movie" : selectedMovie?.title}
+          {step === "search" ? "Add to Library" : selectedMovie?.title}
         </ModalTitle>
       </DialogHeader>
 
@@ -197,7 +261,7 @@ export function AddMovieDialog({
             <form
               onSubmit={(e) => {
                 e.preventDefault();
-                runSearch(query);
+                runSearch(query, searchType);
               }}
             >
               <div className="relative">
@@ -206,7 +270,8 @@ export function AddMovieDialog({
                   inputMode="search"
                   enterKeyHint="search"
                   autoComplete="off"
-                  placeholder="Movie title..."
+                  placeholder="Movie or TV show title..."
+                  aria-label="Search for a movie or TV show"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   autoFocus
@@ -228,6 +293,24 @@ export function AddMovieDialog({
               </div>
             </form>
 
+            <div className="flex gap-1 rounded-lg bg-muted p-1" role="group" aria-label="Search in">
+              {SEARCH_TYPES.map((t) => (
+                <button
+                  key={t.value}
+                  type="button"
+                  onClick={() => setSearchType(t.value)}
+                  aria-pressed={searchType === t.value}
+                  className={`min-h-10 flex-1 rounded-md px-3 text-sm font-medium transition-colors ${
+                    searchType === t.value
+                      ? "bg-background text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+
             {hasSearched && !loading && results.length === 0 && (
               <p className="text-sm text-muted-foreground">
                 No results found. Try a different title.
@@ -236,15 +319,15 @@ export function AddMovieDialog({
 
             {results.length > 0 && (
               <div className="space-y-2">
-                {results.slice(0, 10).map((movie) => (
+                {results.slice(0, 10).map((result) => (
                   <button
-                    key={movie.tmdbId}
-                    onClick={() => handleSelectMovie(movie)}
+                    key={`${result.mediaType}-${result.tmdbId}`}
+                    onClick={() => handleSelectMovie(result)}
                     className="flex w-full items-start gap-3 rounded-lg border p-3 text-left transition-colors hover:bg-accent active:bg-accent"
                   >
-                    {movie.posterPath ? (
+                    {result.posterPath ? (
                       <Image
-                        src={getPosterUrl(movie.posterPath, "w185")!}
+                        src={getPosterUrl(result.posterPath, "w185")!}
                         alt=""
                         width={56}
                         height={80}
@@ -256,12 +339,17 @@ export function AddMovieDialog({
                       </div>
                     )}
                     <div className="min-w-0 flex-1">
-                      <p className="text-base font-medium leading-tight">{movie.title}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {movie.year || "Unknown year"}
+                      <p className="text-base font-medium leading-tight">{result.title}</p>
+                      <p className="mt-0.5 flex items-center gap-1.5 text-sm text-muted-foreground">
+                        {result.year || "Unknown year"}
+                        {result.mediaType === "tv" && (
+                          <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-foreground">
+                            TV
+                          </span>
+                        )}
                       </p>
                       <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
-                        {movie.overview}
+                        {result.overview}
                       </p>
                     </div>
                   </button>
@@ -271,19 +359,25 @@ export function AddMovieDialog({
           </div>
         )}
 
-        {/* PLATFORMS — movie selected, choose where you own it */}
+        {/* PLATFORMS — a title is selected, choose where you own it */}
         {step === "platforms" && selectedMovie && (() => {
-          const isDuplicate = existingTmdbIds.includes(selectedMovie.tmdbId);
+          const isTv = selectedMovie.mediaType === "tv";
+          const isDuplicate = existingTitles.some(
+            (t) => t.mediaType === selectedMovie.mediaType && t.tmdbId === selectedMovie.tmdbId
+          );
+          const noun = isTv ? "show" : "movie";
+          const needsSeasons = isTv && !isDuplicate;
+          const seasonsReady = !needsSeasons || (seasons !== null && !seasonsError);
+          const canSave =
+            seasonsReady && selectionsAreValid(platformSelections) && !loading;
+
           return (
             <div className="space-y-4">
               <Button
                 variant="ghost"
                 size="sm"
                 className="-ml-2"
-                onClick={() => {
-                  setStep("search");
-                  setPlatformSelections([]);
-                }}
+                onClick={handleBack}
               >
                 <ArrowLeft /> Back to results
               </Button>
@@ -300,20 +394,23 @@ export function AddMovieDialog({
                 )}
                 <div>
                   <p className="text-base font-medium">{selectedMovie.title}</p>
-                  <p className="text-sm text-muted-foreground">{selectedMovie.year}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {selectedMovie.year}
+                    {isTv && " · TV show"}
+                  </p>
                 </div>
               </div>
 
               {isDuplicate ? (
                 <div className="space-y-3">
                   <div className="rounded-md bg-amber-500/10 p-3 text-sm text-amber-700 dark:text-amber-400">
-                    This movie is already in your collection.
+                    This {noun} is already in your collection.
                   </div>
                   {onViewExisting && (
                     <Button
                       variant="outline"
                       className="w-full"
-                      onClick={() => onViewExisting(selectedMovie.tmdbId)}
+                      onClick={() => onViewExisting(selectedMovie.mediaType, selectedMovie.tmdbId)}
                     >
                       View &amp; edit in your collection
                     </Button>
@@ -332,19 +429,48 @@ export function AddMovieDialog({
                     />
                   </div>
                   <div>
-                    <p className="mb-2 text-sm font-medium">Where do you own this movie?</p>
-                    <PlatformPicker
-                      selections={platformSelections}
-                      onChange={setPlatformSelections}
-                    />
+                    <p className="mb-2 text-sm font-medium">Where do you own this {noun}?</p>
+
+                    {isTv && seasonsLoading && (
+                      <div className="flex items-center gap-2 py-4 text-sm text-muted-foreground" role="status">
+                        <LoaderCircle className="h-4 w-4 animate-spin" />
+                        Loading seasons…
+                      </div>
+                    )}
+
+                    {isTv && seasonsError && (
+                      <div className="space-y-2 rounded-md bg-destructive/10 p-3 text-sm text-destructive" role="alert">
+                        <p>Couldn&rsquo;t load this show&rsquo;s seasons.</p>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => loadSeasons(selectedMovie.tmdbId)}
+                        >
+                          Try again
+                        </Button>
+                      </div>
+                    )}
+
+                    {seasonsReady && (
+                      <PlatformPicker
+                        selections={platformSelections}
+                        onChange={setPlatformSelections}
+                        seasons={isTv ? (seasons ?? []) : undefined}
+                      />
+                    )}
                   </div>
 
                   {/* Stays visible at the bottom of the sheet while the list scrolls */}
                   <div className="sticky bottom-0 -mx-4 bg-popover px-4 pb-1 pt-2">
+                    {platformSelections.some((s) => s.scope !== "all" && s.scope.length === 0) && (
+                      <p className="mb-2 text-center text-xs text-muted-foreground">
+                        Choose at least one season for each platform
+                      </p>
+                    )}
                     <Button
                       className="w-full text-base"
                       size="lg"
-                      disabled={platformSelections.length === 0 || loading}
+                      disabled={!canSave}
                       onClick={handleSave}
                     >
                       {loading ? "Adding..." : "Add to Collection"}

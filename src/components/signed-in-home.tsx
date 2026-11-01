@@ -8,6 +8,7 @@ import type { Movie } from "@/components/movie-collection";
 import { MovieDetailDialog } from "@/components/movie-detail-dialog";
 import { AccountSheet, HamburgerMenu } from "@/components/hamburger-menu";
 import { FilterSortMenu } from "@/components/filter-sort-menu";
+import { buildCsv } from "@/lib/export-csv";
 import { countByType } from "@/lib/library";
 import type { SortOption, TypeFilter, ViewMode } from "@/lib/library";
 import { PLATFORMS } from "@/lib/platforms";
@@ -60,45 +61,7 @@ export function SignedInHome({ user }: { user: User }) {
   function handleExportCSV() {
     if (allMovies.length === 0) return;
 
-    function escapeCSV(value: string | number | null | undefined): string {
-      if (value === null || value === undefined) return "";
-      const str = String(value);
-      if (str.includes(",") || str.includes('"') || str.includes("\n")) {
-        return `"${str.replace(/"/g, '""')}"`;
-      }
-      return str;
-    }
-
-    const headers = ["Title", "Year", "Runtime (min)", "Platforms", "Notes", "Added"];
-
-    const rows = allMovies.map((movie) => {
-      const platforms = movie.platforms
-        .map((p) => {
-          const label = p.platform
-            .replace("_", " ")
-            .replace(/\b\w/g, (c) => c.toUpperCase());
-          return p.resolution ? `${label} ${p.resolution}` : label;
-        })
-        .join("; ");
-
-      const added = new Date(movie.addedAt).toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-      });
-
-      return [
-        escapeCSV(movie.title),
-        escapeCSV(movie.year),
-        escapeCSV(movie.runtime),
-        escapeCSV(platforms),
-        escapeCSV(movie.notes),
-        escapeCSV(added),
-      ].join(",");
-    });
-
-    const csv = [headers.join(","), ...rows].join("\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const blob = new Blob([buildCsv(allMovies)], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
@@ -116,8 +79,9 @@ export function SignedInHome({ user }: { user: User }) {
   }
 
   const typeCounts = countByType(allMovies);
-  // The switcher only appears once the library has TV shows in it
-  const showTypeFilter = typeCounts.tv > 0;
+  // The switcher appears once the library has a TV show. It also stays while a
+  // type is selected, so removing the last show can't strand you in an empty view.
+  const showTypeFilter = typeCounts.tv > 0 || typeFilter !== "all";
 
   return (
     <main className="min-h-dvh bg-background text-foreground">
@@ -179,7 +143,7 @@ export function SignedInHome({ user }: { user: User }) {
             <button
               onClick={() => setAddDialogOpen(true)}
               className="hidden h-10 w-10 items-center justify-center rounded-lg text-foreground transition-colors hover:bg-accent md:flex"
-              aria-label="Add movie"
+              aria-label="Add to library"
             >
               <Plus className="h-[22px] w-[22px]" />
             </button>
@@ -273,10 +237,10 @@ export function SignedInHome({ user }: { user: User }) {
             if (!open) setAddDialogQuery("");
           }}
           onMovieAdded={() => setRefreshKey((k) => k + 1)}
-          existingTmdbIds={allMovies.filter((m) => m.mediaType === "movie").map((m) => m.tmdbId)}
+          existingTitles={allMovies}
           initialQuery={addDialogQuery}
-          onViewExisting={(tmdbId) => {
-            const movie = allMovies.find((m) => m.mediaType === "movie" && m.tmdbId === tmdbId);
+          onViewExisting={(mediaType, tmdbId) => {
+            const movie = allMovies.find((m) => m.mediaType === mediaType && m.tmdbId === tmdbId);
             if (movie) {
               setAddDialogOpen(false);
               setAddDialogQuery("");
@@ -309,7 +273,7 @@ export function SignedInHome({ user }: { user: User }) {
           </button>
           <button
             onClick={() => setAddDialogOpen(true)}
-            aria-label="Add movie"
+            aria-label="Add to library"
             className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-foreground text-background shadow-md transition-transform active:scale-95"
           >
             <Plus className="h-6 w-6" strokeWidth={2.5} />

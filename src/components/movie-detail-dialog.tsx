@@ -7,10 +7,18 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { DialogHeader } from "@/components/ui/dialog";
 import { ResponsiveModal, ModalTitle } from "@/components/ui/responsive-modal";
-import { DEFAULT_RESOLUTION } from "@/lib/platforms";
+import { formatRuntime } from "@/lib/format";
+import {
+  fromRows,
+  ownershipLabel,
+  selectionsAreValid,
+  toEntries,
+  toSeasonOptions,
+  type PlatformSelection,
+} from "@/lib/ownership";
 import { getPosterUrl } from "@/lib/tmdb-mappers";
 import { PlatformChips } from "@/components/platform-chips";
-import { PlatformPicker, type PlatformSelection } from "@/components/platform-picker";
+import { PlatformPicker } from "@/components/platform-picker";
 import type { Movie } from "@/components/movie-collection";
 
 const barlowCondensed = Barlow_Condensed({
@@ -36,14 +44,9 @@ type TmdbData = {
   director?: string | null;
   // TV
   creators?: string[];
+  status?: string | null;
+  seasons?: { seasonNumber: number; name: string; episodeCount: number }[];
 };
-
-function toSelections(movie: Movie): PlatformSelection[] {
-  return movie.platforms.map((p) => ({
-    platform: p.platform,
-    resolution: p.resolution || DEFAULT_RESOLUTION,
-  }));
-}
 
 // ============================================================
 // COMPONENT
@@ -76,7 +79,7 @@ export function MovieDetailDialog({
     setConfirmDelete(false);
     setError(null);
     setNotes(movie.notes || "");
-    setPlatformSelections(toSelections(movie));
+    setPlatformSelections(fromRows(movie.platforms));
 
     // Ignore the response if another title was opened in the meantime
     let cancelled = false;
@@ -105,6 +108,10 @@ export function MovieDetailDialog({
       setError("Select at least one platform.");
       return;
     }
+    if (!selectionsAreValid(platformSelections)) {
+      setError("Choose at least one season for each platform.");
+      return;
+    }
 
     setSaving(true);
     setError(null);
@@ -114,7 +121,7 @@ export function MovieDetailDialog({
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          platforms: platformSelections,
+          platforms: toEntries(platformSelections),
           notes: notes || null,
         }),
       });
@@ -157,7 +164,13 @@ export function MovieDetailDialog({
   const creditValue = tmdbData?.creators?.length
     ? tmdbData.creators.join(", ")
     : tmdbData?.director;
-  const yearRuntime = `${movie.year ?? ""}${movie.runtime ? ` \u00B7 ${movie.runtime} min` : ""}`;
+  const isTv = movie.mediaType === "tv";
+  const runtimeText = formatRuntime(movie.mediaType, movie.runtime);
+  const yearRuntime = `${isTv ? "TV \u00B7 " : ""}${movie.year ?? ""}${runtimeText ? ` \u00B7 ${runtimeText}` : ""}`;
+  // Seasons come from TMDB, so editing a show waits until they've loaded
+  const seasonOptions = isTv ? toSeasonOptions(tmdbData?.seasons) : undefined;
+  const canEdit = !isTv || tmdbData !== null;
+  const summary = isTv ? ownershipLabel(movie.platforms, movie.totalSeasons) : null;
   const posterUrl = getPosterUrl(movie.posterPath, "w342");
 
   return (
@@ -234,6 +247,13 @@ export function MovieDetailDialog({
                 ))}
               </div>
             )}
+            {isTv && tmdbData?.status && (
+              <p className="text-sm text-muted-foreground">
+                {tmdbData.status}
+                {movie.totalSeasons != null &&
+                  ` \u00B7 ${movie.totalSeasons} season${movie.totalSeasons === 1 ? "" : "s"}`}
+              </p>
+            )}
             {tmdbData?.rating ? (
               <p className="text-sm text-muted-foreground">
                 Rating: {tmdbData.rating.toFixed(1)}/10
@@ -300,7 +320,12 @@ export function MovieDetailDialog({
               Platforms
             </p>
             {!editing && (
-              <Button variant="ghost" size="sm" onClick={() => setEditing(true)}>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setEditing(true)}
+                disabled={!canEdit}
+              >
                 Edit
               </Button>
             )}
@@ -323,6 +348,7 @@ export function MovieDetailDialog({
               <PlatformPicker
                 selections={platformSelections}
                 onChange={setPlatformSelections}
+                seasons={seasonOptions}
               />
 
               {/* Stays visible at the bottom of the sheet while the list scrolls */}
@@ -334,7 +360,7 @@ export function MovieDetailDialog({
                   variant="outline"
                   onClick={() => {
                     setEditing(false);
-                    setPlatformSelections(toSelections(movie));
+                    setPlatformSelections(fromRows(movie.platforms));
                     setNotes(movie.notes || "");
                   }}
                 >
@@ -350,7 +376,10 @@ export function MovieDetailDialog({
                   {movie.notes}
                 </p>
               )}
-              <PlatformChips platforms={movie.platforms} size="md" />
+              {summary && (
+                <p className="text-sm text-muted-foreground">{summary}</p>
+              )}
+              <PlatformChips platforms={movie.platforms} size="md" showScope={isTv} />
             </div>
           )}
         </div>
