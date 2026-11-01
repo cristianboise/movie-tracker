@@ -1,13 +1,17 @@
 import { db } from "@/db";
 import { movies, moviePlatforms } from "@/db/schema";
-import { getCachedMovieData } from "@/lib/tmdb";
+import { getCachedTitle } from "@/lib/tmdb";
+import { getPosterUrl } from "@/lib/tmdb-mappers";
+import { findSeasonError } from "@/lib/titles";
 import { getAuthenticatedUserId } from "@/lib/get-user";
-import { parseJsonBody, serverError, unauthorized } from "@/lib/api";
+import { badRequest, parseJsonBody, serverError, unauthorized } from "@/lib/api";
 import { createMovieSchema } from "@/lib/schemas";
 import { and, eq, desc, inArray } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
-const ALREADY_IN_COLLECTION = "This movie is already in your collection";
+function alreadyInCollection(mediaType: string) {
+  return `This ${mediaType === "tv" ? "show" : "movie"} is already in your collection`;
+}
 
 // ===================
 // POST /api/movies
@@ -19,20 +23,36 @@ export async function POST(request: NextRequest) {
   try {
     const parsed = await parseJsonBody(request, createMovieSchema);
     if (!parsed.ok) return parsed.response;
-    const { tmdbId, platforms, notes } = parsed.data;
+    const { mediaType, tmdbId, platforms, notes } = parsed.data;
+
+    // Movies can't have seasons; reject before spending a TMDB call
+    const seasonError = findSeasonError(mediaType, platforms);
+    if (seasonError) return badRequest(seasonError);
 
     // Cheap duplicate check first so we don't spend a TMDB call on it.
     const [existing] = await db
       .select({ id: movies.id })
       .from(movies)
-      .where(and(eq(movies.userId, userId), eq(movies.tmdbId, tmdbId)))
+      .where(
+        and(
+          eq(movies.userId, userId),
+          eq(movies.mediaType, mediaType),
+          eq(movies.tmdbId, tmdbId)
+        )
+      )
       .limit(1);
 
     if (existing) {
-      return NextResponse.json({ error: ALREADY_IN_COLLECTION }, { status: 409 });
+      return NextResponse.json({ error: alreadyInCollection(mediaType) }, { status: 409 });
     }
 
-    const tmdbData = await getCachedMovieData(tmdbId);
+    const tmdbData = await getCachedTitle(mediaType, tmdbId);
+
+    if (tmdbData.mediaType === "tv") {
+      const knownSeasons = tmdbData.seasons.map((s) => s.seasonNumber);
+      const unknownSeason = findSeasonError(mediaType, platforms, knownSeasons);
+      if (unknownSeason) return badRequest(unknownSeason);
+    }
 
     // If two requests race past the check above, the unique index
     // decides the winner and the loser gets no row back.
@@ -40,19 +60,20 @@ export async function POST(request: NextRequest) {
       .insert(movies)
       .values({
         userId,
+        mediaType,
         tmdbId,
         title: tmdbData.title,
         year: tmdbData.year ? parseInt(tmdbData.year) : null,
         runtimeMin: tmdbData.runtime,
-        posterUrl: tmdbData.posterUrl,
+        posterPath: tmdbData.posterPath,
         tmdbMetadataJson: JSON.stringify(tmdbData),
         notes,
       })
-      .onConflictDoNothing({ target: [movies.userId, movies.tmdbId] })
+      .onConflictDoNothing({ target: [movies.userId, movies.mediaType, movies.tmdbId] })
       .returning();
 
     if (!newMovie) {
-      return NextResponse.json({ error: ALREADY_IN_COLLECTION }, { status: 409 });
+      return NextResponse.json({ error: alreadyInCollection(mediaType) }, { status: 409 });
     }
 
     try {
@@ -60,6 +81,7 @@ export async function POST(request: NextRequest) {
         platforms.map((p) => ({
           movieId: newMovie.id,
           platform: p.platform,
+          seasonNumber: p.seasonNumber ?? null,
           resolution: p.resolution || null,
           notes: p.notes || null,
         }))
@@ -71,14 +93,15 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({
-      message: "Movie added to collection",
+      message: mediaType === "tv" ? "Show added to collection" : "Movie added to collection",
       movie: {
         id: newMovie.id,
+        mediaType: newMovie.mediaType,
         tmdbId: newMovie.tmdbId,
         title: newMovie.title,
         year: newMovie.year,
         runtime: newMovie.runtimeMin,
-        posterUrl: newMovie.posterUrl,
+        posterUrl: getPosterUrl(newMovie.posterPath),
         platforms,
       },
     }, { status: 201 });
@@ -127,19 +150,23 @@ export async function GET(request: NextRequest) {
 
       return {
         id: movie.id,
+        mediaType: movie.mediaType,
         tmdbId: movie.tmdbId,
         title: movie.title,
         year: movie.year,
         runtime: movie.runtimeMin,
-        posterUrl: movie.posterUrl,
+        posterPath: movie.posterPath,
+        posterUrl: getPosterUrl(movie.posterPath),
         notes: movie.notes,
         addedAt: movie.addedAt,
         genres: metadata?.genres ?? [],
         cast: metadata?.cast?.map((c: { name: string }) => c.name) ?? [],
         director: metadata?.director ?? null,
+        creators: metadata?.creators ?? [],
         platforms: (platformsByMovie.get(movie.id) ?? []).map((p) => ({
           id: p.id,
           platform: p.platform,
+          seasonNumber: p.seasonNumber,
           resolution: p.resolution,
           notes: p.notes,
         })),

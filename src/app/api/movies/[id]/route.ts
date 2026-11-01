@@ -2,6 +2,7 @@ import { db } from "@/db";
 import { movies, moviePlatforms } from "@/db/schema";
 import { getAuthenticatedUserId } from "@/lib/get-user";
 import { badRequest, parseJsonBody, serverError, unauthorized } from "@/lib/api";
+import { findSeasonError } from "@/lib/titles";
 import { updateMovieSchema } from "@/lib/schemas";
 import { eq, and } from "drizzle-orm";
 import type { BatchItem } from "drizzle-orm/batch";
@@ -42,6 +43,16 @@ export async function PUT(
     if (!parsed.ok) return parsed.response;
     const { platforms, notes } = parsed.data;
 
+    if (platforms) {
+      // Season numbers come from the stored TMDB metadata for TV shows
+      const stored = movie.tmdbMetadataJson ? JSON.parse(movie.tmdbMetadataJson) : null;
+      const knownSeasons: number[] | undefined = stored?.seasons?.map(
+        (s: { seasonNumber: number }) => s.seasonNumber
+      );
+      const seasonError = findSeasonError(movie.mediaType, platforms, knownSeasons);
+      if (seasonError) return badRequest(seasonError);
+    }
+
     // Replacing platforms is a delete + insert. Run everything as one
     // batch so a failed insert can't leave the movie with no platforms.
     const writes: BatchItem<"pg">[] = [];
@@ -53,6 +64,7 @@ export async function PUT(
           platforms.map((p) => ({
             movieId,
             platform: p.platform,
+            seasonNumber: p.seasonNumber ?? null,
             resolution: p.resolution || null,
             notes: p.notes || null,
           }))
@@ -85,6 +97,7 @@ export async function PUT(
         title: movie.title,
         platforms: updatedPlatforms.map((p) => ({
           platform: p.platform,
+          seasonNumber: p.seasonNumber,
           resolution: p.resolution,
           notes: p.notes,
         })),

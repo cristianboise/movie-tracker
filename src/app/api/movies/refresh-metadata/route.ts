@@ -1,30 +1,29 @@
 import { db } from "@/db";
 import { movies } from "@/db/schema";
-import {
-  getMovieDetail,
-  getMovieCredits,
-  getMovieExternalIds,
-  getPosterUrl,
-  getBackdropUrl,
-} from "@/lib/tmdb";
+import { fetchTitle } from "@/lib/tmdb";
 import { getAuthenticatedUserId } from "@/lib/get-user";
+import { unauthorized } from "@/lib/api";
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
 // ===================
 // POST /api/movies/refresh-metadata
 // ===================
-// One-time utility: re-fetches fresh TMDB data for every movie in the
-// authenticated user's collection and updates tmdbMetadataJson in place.
-// Bypasses the tmdb_cache so older rows without "director" get it immediately.
+// Utility: re-fetches fresh TMDB data for every title in the
+// authenticated user's collection and updates the stored metadata in place.
+// Bypasses the tmdb_cache. Run it once after the TV-support migration so
+// existing movies get the newer metadata shape.
 export async function POST() {
   const userId = await getAuthenticatedUserId();
-  if (!userId) {
-    return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-  }
+  if (!userId) return unauthorized();
 
   const userMovies = await db
-    .select({ id: movies.id, tmdbId: movies.tmdbId, title: movies.title })
+    .select({
+      id: movies.id,
+      mediaType: movies.mediaType,
+      tmdbId: movies.tmdbId,
+      title: movies.title,
+    })
     .from(movies)
     .where(eq(movies.userId, userId));
 
@@ -32,35 +31,19 @@ export async function POST() {
 
   for (const movie of userMovies) {
     try {
-      const [detail, credits, externalIds] = await Promise.all([
-        getMovieDetail(movie.tmdbId),
-        getMovieCredits(movie.tmdbId),
-        getMovieExternalIds(movie.tmdbId),
-      ]);
-
-      const payload = {
-        tmdbId: detail.id,
-        title: detail.title,
-        year: detail.release_date ? detail.release_date.substring(0, 4) : null,
-        runtime: detail.runtime,
-        overview: detail.overview,
-        tagline: detail.tagline,
-        genres: detail.genres.map((g) => g.name),
-        rating: detail.vote_average,
-        posterUrl: getPosterUrl(detail.poster_path),
-        backdropUrl: getBackdropUrl(detail.backdrop_path),
-        cast: credits.cast.map((c) => ({ name: c.name, character: c.character })),
-        director: credits.director,
-        imdbId: externalIds.imdb_id ?? null,
-      };
+      const meta = await fetchTitle(movie.mediaType, movie.tmdbId);
 
       await db
         .update(movies)
-        .set({ tmdbMetadataJson: JSON.stringify(payload) })
+        .set({
+          tmdbMetadataJson: JSON.stringify(meta),
+          posterPath: meta.posterPath,
+        })
         .where(eq(movies.id, movie.id));
 
       results.push({ title: movie.title, status: "ok" });
     } catch (err) {
+      console.error(`refresh-metadata failed for "${movie.title}"`, err);
       results.push({
         title: movie.title,
         status: "error",
@@ -73,7 +56,7 @@ export async function POST() {
   const failed = results.filter((r) => r.status === "error").length;
 
   return NextResponse.json({
-    message: `Refreshed ${succeeded} movie(s). ${failed} failed.`,
+    message: `Refreshed ${succeeded} title(s). ${failed} failed.`,
     results,
   });
 }
