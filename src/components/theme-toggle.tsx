@@ -107,7 +107,7 @@ export function ThemeToggle() {
               e.stopPropagation();
               selectMode(opt.value);
             }}
-            className={`flex flex-1 items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-medium transition-colors ${
+            className={`flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-sm font-medium transition-colors md:min-h-0 md:text-xs ${
               mode === opt.value
                 ? "bg-foreground text-background"
                 : "text-muted-foreground hover:text-foreground hover:bg-accent"

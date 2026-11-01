@@ -25,7 +25,7 @@ export default function GlobalError({
           backgroundColor: "#09090b",
           color: "#fafafa",
           display: "flex",
-          minHeight: "100vh",
+          minHeight: "100dvh",
           alignItems: "center",
           justifyContent: "center",
         }}

@@ -2,9 +2,11 @@
 
 import { useState, useEffect } from "react";
 import Image from "next/image";
-import { getPlatform, sortPlatforms } from "@/lib/platforms";
-import { PlatformLogo } from "@/components/platform-logos";
-import type { SortOption, ViewMode } from "@/components/filter-sort-menu";
+import { Film, Search, Tv } from "lucide-react";
+import { PlatformChips } from "@/components/platform-chips";
+import { filterAndSort } from "@/lib/library";
+import type { SortOption, TypeFilter, ViewMode } from "@/lib/library";
+import { getPosterUrl, type MediaType, type PosterSize } from "@/lib/tmdb-mappers";
 
 // ============================================================
 // TYPES
@@ -13,24 +15,81 @@ import type { SortOption, ViewMode } from "@/components/filter-sort-menu";
 type Platform = {
   id: number;
   platform: string;
+  seasonNumber: number | null;
   resolution: string | null;
   notes: string | null;
 };
 
 export type Movie = {
   id: number;
+  mediaType: MediaType;
   tmdbId: number;
   title: string;
   year: number | null;
   runtime: number | null;
-  posterUrl: string | null;
+  posterPath: string | null;
   notes: string | null;
   addedAt: string;
   genres: string[];
   cast: string[];
   director: string | null;
+  creators: string[];
   platforms: Platform[];
 };
+
+// ============================================================
+// POSTER
+// Picks the smallest TMDB image that still looks sharp, so a
+// phone on cellular doesn't download 500px posters for thumbnails.
+// ============================================================
+
+function Poster({
+  movie,
+  size,
+  textClass,
+  className = "",
+  priority = false,
+}: {
+  movie: Movie;
+  size: PosterSize;
+  textClass: string;
+  className?: string;
+  // Load eagerly: for posters visible without scrolling
+  priority?: boolean;
+}) {
+  const url = getPosterUrl(movie.posterPath, size);
+  if (!url) {
+    return (
+      <div
+        className={`absolute inset-0 flex items-center justify-center bg-muted p-1.5 text-center text-muted-foreground ${textClass}`}
+      >
+        {movie.title}
+      </div>
+    );
+  }
+  return (
+    <Image
+      src={url}
+      alt={movie.title}
+      fill
+      sizes="(max-width: 768px) 50vw, 20vw"
+      priority={priority}
+      className={`object-cover ${className}`}
+    />
+  );
+}
+
+function TvBadge() {
+  return (
+    <span
+      className="absolute left-1.5 top-1.5 flex items-center gap-1 rounded bg-black/70 px-1.5 py-0.5 text-[10px] font-semibold text-white"
+      title="TV show"
+    >
+      <Tv className="h-3 w-3" aria-hidden />
+      <span className="sr-only">TV show</span>
+    </span>
+  );
+}
 
 // ============================================================
 // COMPONENT
@@ -41,6 +100,7 @@ export function MovieCollection({
   refreshKey,
   search,
   sortBy,
+  typeFilter,
   platformFilter,
   viewMode,
   onMoviesLoaded,
@@ -50,6 +110,7 @@ export function MovieCollection({
   refreshKey: number;
   search: string;
   sortBy: SortOption;
+  typeFilter: TypeFilter;
   platformFilter: string | null;
   viewMode: ViewMode;
   onMoviesLoaded: (movies: Movie[]) => void;
@@ -57,17 +118,21 @@ export function MovieCollection({
 }) {
   const [movies, setMovies] = useState<Movie[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
     async function fetchMovies() {
       setLoading(true);
       try {
         const response = await fetch("/api/movies");
+        if (!response.ok) throw new Error(`Request failed: ${response.status}`);
         const data = await response.json();
         setMovies(data.movies);
         onMoviesLoaded(data.movies);
+        setLoadError(false);
       } catch (error) {
         console.error("Failed to fetch movies:", error);
+        setLoadError(true);
       } finally {
         setLoading(false);
       }
@@ -76,48 +141,7 @@ export function MovieCollection({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refreshKey]);
 
-  // Filter
-  const filtered = movies.filter((movie) => {
-    if (search) {
-      const q = search.toLowerCase();
-      const matchesTitle = movie.title.toLowerCase().includes(q);
-      const matchesDirector = movie.director?.toLowerCase().includes(q) ?? false;
-      const matchesGenre = movie.genres.some((g) => g.toLowerCase().includes(q));
-      const matchesCast = movie.cast.some((c) => c.toLowerCase().includes(q));
-      if (!matchesTitle && !matchesDirector && !matchesGenre && !matchesCast) {
-        return false;
-      }
-    }
-
-    if (platformFilter && !movie.platforms.some((p) => p.platform === platformFilter)) {
-      return false;
-    }
-
-    return true;
-  });
-
-  // Strip leading articles so "The Godfather" sorts under G, not T
-  function sortableTitle(title: string) {
-    return title.replace(/^(the|a|an)\s+/i, "").trimStart();
-  }
-
-  // Sort
-  const sorted = [...filtered].sort((a, b) => {
-    switch (sortBy) {
-      case "title-asc":
-        return sortableTitle(a.title).localeCompare(sortableTitle(b.title));
-      case "title-desc":
-        return sortableTitle(b.title).localeCompare(sortableTitle(a.title));
-      case "added":
-        return new Date(b.addedAt).getTime() - new Date(a.addedAt).getTime();
-      case "year-desc":
-        return (b.year ?? 0) - (a.year ?? 0);
-      case "year-asc":
-        return (a.year ?? 0) - (b.year ?? 0);
-      default:
-        return 0;
-    }
-  });
+  const sorted = filterAndSort(movies, { search, typeFilter, platformFilter, sortBy });
 
   // Skeleton loading
   if (loading) {
@@ -152,32 +176,28 @@ export function MovieCollection({
     );
   }
 
+  if (loadError && movies.length === 0) {
+    return (
+      <div className="mt-24 flex flex-col items-center gap-3 text-center" role="alert">
+        <p className="font-medium">Couldn&rsquo;t load your library</p>
+        <p className="text-sm text-muted-foreground">Check your connection and try again.</p>
+        <button
+          onClick={() => window.location.reload()}
+          className="mt-1 min-h-11 rounded-lg border px-4 text-sm font-medium hover:bg-accent"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
+
   // Empty state
   if (sorted.length === 0) {
     if (movies.length === 0) {
       return (
         <div className="mt-24 flex flex-col items-center gap-4 text-center">
           <div className="rounded-full bg-muted p-6">
-            <svg
-              width="32"
-              height="32"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="text-muted-foreground"
-            >
-              <rect x="2" y="2" width="20" height="20" rx="2" ry="2" />
-              <line x1="7" y1="2" x2="7" y2="22" />
-              <line x1="17" y1="2" x2="17" y2="22" />
-              <line x1="2" y1="12" x2="22" y2="12" />
-              <line x1="2" y1="7" x2="7" y2="7" />
-              <line x1="2" y1="17" x2="7" y2="17" />
-              <line x1="17" y1="17" x2="22" y2="17" />
-              <line x1="17" y1="7" x2="22" y2="7" />
-            </svg>
+            <Film className="h-8 w-8 text-muted-foreground" strokeWidth={1.5} />
           </div>
           <div>
             <p className="font-medium">Your collection is empty</p>
@@ -191,26 +211,13 @@ export function MovieCollection({
     return (
       <div className="mt-24 flex flex-col items-center gap-3 text-center">
         <div className="rounded-full bg-muted p-5">
-          <svg
-            width="26"
-            height="26"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="text-muted-foreground"
-          >
-            <circle cx="11" cy="11" r="8" />
-            <line x1="21" y1="21" x2="16.65" y2="16.65" />
-          </svg>
+          <Search className="h-6 w-6 text-muted-foreground" strokeWidth={1.5} />
         </div>
-        <p className="text-sm text-muted-foreground">No movies match your search</p>
+        <p className="text-sm text-muted-foreground">Nothing matches your search or filters</p>
         {search && onAddWithQuery && (
           <button
             onClick={() => onAddWithQuery(search)}
-            className="mt-1 text-sm font-medium text-foreground underline underline-offset-4 hover:text-muted-foreground transition-colors"
+            className="mt-1 min-h-11 text-sm font-medium text-foreground underline underline-offset-4 transition-colors hover:text-muted-foreground"
           >
             Not in your library? Add &ldquo;{search}&rdquo;
           </button>
@@ -223,50 +230,23 @@ export function MovieCollection({
   if (viewMode === "list") {
     return (
       <div className="mt-3 divide-y divide-border">
-        {sorted.map((movie) => (
+        {sorted.map((movie, index) => (
           <button
             key={movie.id}
             onClick={() => onMovieClick(movie)}
-            className="flex w-full items-start gap-3 px-1 py-2.5 text-left transition-colors hover:bg-accent/50"
+            className="flex min-h-[4.5rem] w-full items-start gap-3 px-1 py-2.5 text-left transition-colors hover:bg-accent/50 active:bg-accent/50"
           >
-            {movie.posterUrl ? (
-              <Image
-                src={movie.posterUrl}
-                alt={movie.title}
-                width={44}
-                height={64}
-                className="h-16 w-11 shrink-0 rounded object-cover"
-                sizes="44px"
-              />
-            ) : (
-              <div className="flex h-16 w-11 shrink-0 items-center justify-center rounded bg-muted text-[9px] text-muted-foreground">
-                {movie.title.slice(0, 4)}
-              </div>
-            )}
+            <div className="relative h-16 w-11 shrink-0 overflow-hidden rounded">
+              <Poster movie={movie} size="w185" textClass="text-[9px]" priority={index < 8} />
+            </div>
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-medium">{movie.title}</p>
               <p className="text-xs text-muted-foreground">
-                {movie.year}{movie.runtime ? ` \u00B7 ${movie.runtime} min` : ""}
+                {movie.mediaType === "tv" && "TV · "}
+                {movie.year}
+                {movie.runtime ? ` · ${movie.runtime} min` : ""}
               </p>
-              <div className="mt-1 flex flex-wrap gap-1">
-                {sortPlatforms(movie.platforms).map((p) => {
-                  const config = getPlatform(p.platform);
-                  return (
-                    <span
-                      key={p.id}
-                      aria-label={config?.label || p.platform}
-                      className={`inline-flex items-center gap-1 rounded px-2 py-1 text-xs font-medium ${
-                        config
-                          ? `${config.bgClass} ${config.textClass}`
-                          : "bg-gray-500 text-white"
-                      }`}
-                    >
-                      <PlatformLogo platformId={p.platform} className="h-3.5 w-3.5 shrink-0" />
-                      {p.resolution && <span>{p.resolution}</span>}
-                    </span>
-                  );
-                })}
-              </div>
+              <PlatformChips platforms={movie.platforms} className="mt-1" />
             </div>
           </button>
         ))}
@@ -278,32 +258,28 @@ export function MovieCollection({
   if (viewMode === "compact") {
     return (
       <div className="mt-4 grid grid-cols-3 gap-x-2 gap-y-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 xl:grid-cols-8">
-        {sorted.map((movie) => (
+        {sorted.map((movie, index) => (
           <button
             key={movie.id}
             onClick={() => onMovieClick(movie)}
+            aria-label={movie.title}
             className="group flex flex-col text-left"
           >
             <div
               className="relative w-full overflow-hidden rounded-md shadow-sm"
               style={{ aspectRatio: "2/3" }}
             >
-              {movie.posterUrl ? (
-                <Image
-                  src={movie.posterUrl}
-                  alt={movie.title}
-                  fill
-                  className="object-cover transition-transform group-hover:scale-105"
-                  sizes="(max-width: 640px) 33vw, (max-width: 768px) 25vw, (max-width: 1024px) 20vw, (max-width: 1280px) 14vw, 12vw"
-                />
-              ) : (
-                <div className="absolute inset-0 flex items-center justify-center bg-muted p-1 text-center text-[9px] text-muted-foreground">
-                  {movie.title}
-                </div>
-              )}
-              {/* Hover overlay — desktop only */}
+              <Poster
+                movie={movie}
+                size="w185"
+                textClass="text-[9px]"
+                priority={index < 12}
+                className="transition-transform group-hover:scale-105"
+              />
+              {movie.mediaType === "tv" && <TvBadge />}
+              {/* Hover overlay — only on devices that can hover */}
               <div className="pointer-events-none absolute inset-0 hidden flex-col justify-end bg-gradient-to-t from-black/80 via-black/30 to-transparent opacity-0 transition-opacity duration-200 group-hover:opacity-100 sm:flex">
-                <p className="p-1.5 text-[9px] font-medium leading-tight text-white line-clamp-2">
+                <p className="line-clamp-2 p-1.5 text-[9px] font-medium leading-tight text-white">
                   {movie.title}
                 </p>
               </div>
@@ -317,7 +293,7 @@ export function MovieCollection({
   // ── GRID VIEW (default / large) ────────────────────────────
   return (
     <div className="mt-4 grid grid-cols-2 gap-x-3 gap-y-6 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-      {sorted.map((movie) => (
+      {sorted.map((movie, index) => (
         <button
           key={movie.id}
           onClick={() => onMovieClick(movie)}
@@ -327,48 +303,23 @@ export function MovieCollection({
             className="relative w-full flex-shrink-0 overflow-hidden rounded-lg shadow-md"
             style={{ aspectRatio: "2/3" }}
           >
-            {movie.posterUrl ? (
-              <Image
-                src={movie.posterUrl}
-                alt={movie.title}
-                fill
-                className="object-cover transition-transform group-hover:scale-105"
-                sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, (max-width: 1280px) 20vw, 17vw"
-              />
-            ) : (
-              <div className="absolute inset-0 flex items-center justify-center bg-muted p-2 text-center text-xs text-muted-foreground">
-                {movie.title}
-              </div>
-            )}
-            {/* Hover overlay — desktop only */}
+            <Poster
+              movie={movie}
+              size="w342"
+              textClass="text-xs"
+              priority={index < 6}
+              className="transition-transform group-hover:scale-105"
+            />
+            {movie.mediaType === "tv" && <TvBadge />}
+            {/* Hover overlay — only on devices that can hover */}
             <div className="pointer-events-none absolute inset-0 hidden flex-col justify-end bg-gradient-to-t from-black/80 via-black/30 to-transparent opacity-0 transition-opacity duration-200 group-hover:opacity-100 sm:flex">
-              <p className="p-2 text-xs font-medium leading-tight text-white line-clamp-2">
+              <p className="line-clamp-2 p-2 text-xs font-medium leading-tight text-white">
                 {movie.title}
               </p>
             </div>
           </div>
-          <p className="mt-1.5 truncate text-sm font-medium">
-            {movie.title}
-          </p>
-          <div className="mt-0.5 flex flex-wrap gap-0.5">
-            {sortPlatforms(movie.platforms).map((p) => {
-              const config = getPlatform(p.platform);
-              return (
-                <span
-                  key={p.id}
-                  aria-label={config?.label || p.platform}
-                  className={`inline-flex items-center gap-1 rounded px-2 py-1 text-xs font-medium ${
-                    config
-                      ? `${config.bgClass} ${config.textClass}`
-                      : "bg-gray-500 text-white"
-                  }`}
-                >
-                  <PlatformLogo platformId={p.platform} className="h-3.5 w-3.5 shrink-0" />
-                  {p.resolution && <span>{p.resolution}</span>}
-                </span>
-              );
-            })}
-          </div>
+          <p className="mt-1.5 w-full truncate text-sm font-medium">{movie.title}</p>
+          <PlatformChips platforms={movie.platforms} className="mt-0.5" />
         </button>
       ))}
     </div>
