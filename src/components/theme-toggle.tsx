@@ -67,6 +67,8 @@ export function ThemeToggle() {
 
     const stored = localStorage.getItem(STORAGE_KEY) as ThemeMode | null;
     const initial = stored === "light" || stored === "dark" ? stored : "system";
+    // TODO: move to useSyncExternalStore when the menu is rebuilt for mobile
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMode(initial);
     applyTheme(initial);
   }, []);
