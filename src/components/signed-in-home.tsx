@@ -30,8 +30,12 @@ export function SignedInHome({ user }: { user: User }) {
   useEffect(() => {
     const savedSort = localStorage.getItem("sortBy") as SortOption | null;
     const savedView = localStorage.getItem("viewMode") as ViewMode | null;
+    // Read after mount (not in useState) so server and client render the same
+    // HTML. Setting state here is intentional.
+    /* eslint-disable react-hooks/set-state-in-effect */
     if (savedSort) setSortBy(savedSort);
     if (savedView) setViewMode(savedView);
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, []);
 
   useEffect(() => { localStorage.setItem("sortBy", sortBy); }, [sortBy]);

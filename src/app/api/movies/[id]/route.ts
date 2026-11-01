@@ -1,11 +1,11 @@
 import { db } from "@/db";
 import { movies, moviePlatforms } from "@/db/schema";
 import { getAuthenticatedUserId } from "@/lib/get-user";
+import { badRequest, parseJsonBody, serverError, unauthorized } from "@/lib/api";
+import { updateMovieSchema } from "@/lib/schemas";
 import { eq, and } from "drizzle-orm";
+import type { BatchItem } from "drizzle-orm/batch";
 import { NextRequest, NextResponse } from "next/server";
-
-const VALID_PLATFORMS = ["apple", "fandango", "amazon", "movies_anywhere"];
-const VALID_RESOLUTIONS = ["4K", "HD", "SD"];
 
 async function getOwnedMovie(movieId: number, userId: string) {
   const [movie] = await db
@@ -25,70 +25,52 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const userId = await getAuthenticatedUserId();
-  if (!userId) {
-    return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-  }
+  if (!userId) return unauthorized();
 
   try {
     const { id } = await params;
     const movieId = parseInt(id, 10);
 
-    if (isNaN(movieId)) {
-      return NextResponse.json({ error: "Invalid movie ID" }, { status: 400 });
-    }
+    if (isNaN(movieId)) return badRequest("Invalid movie ID");
 
     const movie = await getOwnedMovie(movieId, userId);
     if (!movie) {
       return NextResponse.json({ error: "Movie not found" }, { status: 404 });
     }
 
-    const body = await request.json();
-    const { platforms, notes } = body;
+    const parsed = await parseJsonBody(request, updateMovieSchema);
+    if (!parsed.ok) return parsed.response;
+    const { platforms, notes } = parsed.data;
+
+    // Replacing platforms is a delete + insert. Run everything as one
+    // batch so a failed insert can't leave the movie with no platforms.
+    const writes: BatchItem<"pg">[] = [];
 
     if (platforms) {
-      if (!Array.isArray(platforms) || platforms.length === 0) {
-        return NextResponse.json(
-          { error: "platforms must be a non-empty array" },
-          { status: 400 }
-        );
-      }
-
-      for (const p of platforms) {
-        if (!VALID_PLATFORMS.includes(p.platform)) {
-          return NextResponse.json(
-            { error: `Invalid platform: "${p.platform}"` },
-            { status: 400 }
-          );
-        }
-        if (p.resolution && !VALID_RESOLUTIONS.includes(p.resolution)) {
-          return NextResponse.json(
-            { error: `Invalid resolution: "${p.resolution}"` },
-            { status: 400 }
-          );
-        }
-      }
-
-      await db
-        .delete(moviePlatforms)
-        .where(eq(moviePlatforms.movieId, movieId));
-
-      const platformRows = platforms.map(
-        (p: { platform: string; resolution?: string; notes?: string }) => ({
-          movieId,
-          platform: p.platform,
-          resolution: p.resolution || null,
-          notes: p.notes || null,
-        })
+      writes.push(
+        db.delete(moviePlatforms).where(eq(moviePlatforms.movieId, movieId)),
+        db.insert(moviePlatforms).values(
+          platforms.map((p) => ({
+            movieId,
+            platform: p.platform,
+            resolution: p.resolution || null,
+            notes: p.notes || null,
+          }))
+        )
       );
-
-      await db.insert(moviePlatforms).values(platformRows);
     }
 
     if (notes !== undefined) {
-      await db
-        .update(movies)
-        .set({ notes, updatedAt: new Date() })
-        .where(eq(movies.id, movieId));
+      writes.push(
+        db
+          .update(movies)
+          .set({ notes, updatedAt: new Date() })
+          .where(eq(movies.id, movieId))
+      );
+    }
+
+    if (writes.length > 0) {
+      await db.batch(writes as [BatchItem<"pg">, ...BatchItem<"pg">[]]);
     }
 
     const updatedPlatforms = await db
@@ -111,10 +93,7 @@ export async function PUT(
     });
 
   } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Unknown error" },
-      { status: 500 }
-    );
+    return serverError(error);
   }
 }
 
@@ -126,17 +105,13 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const userId = await getAuthenticatedUserId();
-  if (!userId) {
-    return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-  }
+  if (!userId) return unauthorized();
 
   try {
     const { id } = await params;
     const movieId = parseInt(id, 10);
 
-    if (isNaN(movieId)) {
-      return NextResponse.json({ error: "Invalid movie ID" }, { status: 400 });
-    }
+    if (isNaN(movieId)) return badRequest("Invalid movie ID");
 
     const movie = await getOwnedMovie(movieId, userId);
     if (!movie) {
@@ -150,9 +125,6 @@ export async function DELETE(
     });
 
   } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Unknown error" },
-      { status: 500 }
-    );
+    return serverError(error);
   }
 }

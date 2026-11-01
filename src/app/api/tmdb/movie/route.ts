@@ -1,33 +1,22 @@
 import { getCachedMovieData } from "@/lib/tmdb";
+import { getAuthenticatedUserId } from "@/lib/get-user";
+import { parseSearchParams, serverError, unauthorized } from "@/lib/api";
+import { tmdbIdQuerySchema } from "@/lib/schemas";
 import { NextRequest, NextResponse } from "next/server";
 
-// Visit /api/tmdb/movie?id=27205 to get full details for Inception.
+// Visit /api/tmdb/movie?id=27205 (while signed in) to get full details for Inception.
 export async function GET(request: NextRequest) {
-  const idParam = request.nextUrl.searchParams.get("id");
+  // Signed-in users only, so strangers can't spend our TMDB quota
+  const userId = await getAuthenticatedUserId();
+  if (!userId) return unauthorized();
 
-  if (!idParam) {
-    return NextResponse.json(
-      { error: "Missing 'id' query parameter. Example: /api/tmdb/movie?id=27205" },
-      { status: 400 }
-    );
-  }
-
-  const tmdbId = parseInt(idParam, 10);
-
-  if (isNaN(tmdbId)) {
-    return NextResponse.json(
-      { error: "'id' must be a number" },
-      { status: 400 }
-    );
-  }
+  const parsed = parseSearchParams(request.nextUrl.searchParams, tmdbIdQuerySchema);
+  if (!parsed.ok) return parsed.response;
 
   try {
-    const data = await getCachedMovieData(tmdbId);
+    const data = await getCachedMovieData(parsed.data.id);
     return NextResponse.json(data);
   } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Unknown error" },
-      { status: 500 }
-    );
+    return serverError(error);
   }
 }

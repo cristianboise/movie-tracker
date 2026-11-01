@@ -1,20 +1,20 @@
 import { searchMovies, getPosterUrl } from "@/lib/tmdb";
+import { getAuthenticatedUserId } from "@/lib/get-user";
+import { parseSearchParams, serverError, unauthorized } from "@/lib/api";
+import { tmdbSearchQuerySchema } from "@/lib/schemas";
 import { NextRequest, NextResponse } from "next/server";
 
-// Visit /api/tmdb/search?q=inception to test this.
+// Visit /api/tmdb/search?q=inception (while signed in) to test this.
 // The "q" is called a query parameter — it's how the browser
 // passes your search term to the server.
 export async function GET(request: NextRequest) {
-  // Pull the "q" parameter out of the URL
-  const query = request.nextUrl.searchParams.get("q");
+  // Signed-in users only, so strangers can't spend our TMDB quota
+  const userId = await getAuthenticatedUserId();
+  if (!userId) return unauthorized();
 
-  // If no search term was provided, return an error
-  if (!query) {
-    return NextResponse.json(
-      { error: "Missing 'q' query parameter. Example: /api/tmdb/search?q=inception" },
-      { status: 400 }
-    );
-  }
+  const parsed = parseSearchParams(request.nextUrl.searchParams, tmdbSearchQuerySchema);
+  if (!parsed.ok) return parsed.response;
+  const { q: query } = parsed.data;
 
   try {
     const results = await searchMovies(query);
@@ -36,9 +36,6 @@ export async function GET(request: NextRequest) {
       results: simplified,
     });
   } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Unknown error" },
-      { status: 500 }
-    );
+    return serverError(error);
   }
 }
