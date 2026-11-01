@@ -15,6 +15,8 @@ import {
   type SeasonOption,
 } from "@/lib/ownership";
 import { getPosterUrl, type MediaType } from "@/lib/tmdb-mappers";
+import { buildAddedMovie } from "@/lib/library-cache";
+import type { Movie } from "@/lib/movie-types";
 
 // ============================================================
 // TYPES
@@ -55,7 +57,8 @@ export function AddMovieDialog({
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onMovieAdded: () => void;
+  // Called with the new entry as soon as the server confirms the add
+  onMovieAdded: (movie: Movie) => void;
   // Titles already in the library, to catch duplicates
   existingTitles?: { mediaType: MediaType; tmdbId: number }[];
   initialQuery?: string;
@@ -225,8 +228,23 @@ export function AddMovieDialog({
         return;
       }
 
+      const added = data.movie;
+      const newMovie = buildAddedMovie({
+        id: added.id,
+        mediaType: added.mediaType,
+        tmdbId: added.tmdbId,
+        title: added.title,
+        year: added.year,
+        runtime: added.runtime,
+        posterPath: selectedMovie.posterPath,
+        notes: notes.trim() || null,
+        // Specials (season 0) don't count towards "3 of 5 seasons"
+        totalSeasons: seasons ? seasons.filter((s) => s.seasonNumber > 0).length : null,
+        platforms: added.platforms,
+      });
+
       resetForNextSearch(selectedMovie.title);
-      onMovieAdded();
+      onMovieAdded(newMovie);
     } catch {
       setError("Failed to save. Check your connection.");
     } finally {

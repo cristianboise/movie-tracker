@@ -19,7 +19,8 @@ import {
 import { getPosterUrl } from "@/lib/tmdb-mappers";
 import { PlatformChips } from "@/components/platform-chips";
 import { PlatformPicker } from "@/components/platform-picker";
-import type { Movie } from "@/components/movie-collection";
+import { entriesToRows } from "@/lib/library-cache";
+import type { Movie } from "@/lib/movie-types";
 
 const barlowCondensed = Barlow_Condensed({
   weight: "700",
@@ -56,12 +57,15 @@ export function MovieDetailDialog({
   movie,
   open,
   onClose,
-  onMovieChanged,
+  onMovieUpdated,
+  onMovieDeleted,
 }: {
   movie: Movie | null;
   open: boolean;
   onClose: () => void;
-  onMovieChanged: () => void;
+  // Called once the server confirms a save or a delete
+  onMovieUpdated: (id: number, patch: Partial<Movie>) => void;
+  onMovieDeleted: (id: number) => void;
 }) {
   const [tmdbData, setTmdbData] = useState<TmdbData | null>(null);
   const [editing, setEditing] = useState(false);
@@ -126,14 +130,17 @@ export function MovieDetailDialog({
         }),
       });
 
+      const data = await response.json();
       if (!response.ok) {
-        const data = await response.json();
         setError(data.error || "Failed to save");
         return;
       }
 
       setEditing(false);
-      onMovieChanged();
+      onMovieUpdated(movie.id, {
+        notes: data.movie.notes,
+        platforms: entriesToRows(data.movie.platforms),
+      });
     } catch {
       setError("Failed to save. Check your connection.");
     } finally {
@@ -151,7 +158,9 @@ export function MovieDetailDialog({
 
       if (response.ok) {
         onClose();
-        onMovieChanged();
+        onMovieDeleted(movie.id);
+      } else {
+        setError("Failed to delete.");
       }
     } catch {
       setError("Failed to delete.");

@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Library, Menu, Plus, Search, X } from "lucide-react";
 import { AddMovieDialog } from "@/components/add-movie-dialog";
 import { MovieCollection } from "@/components/movie-collection";
-import type { Movie } from "@/components/movie-collection";
+import type { Movie } from "@/lib/movie-types";
+import { useLibrary } from "@/hooks/use-library";
 import { MovieDetailDialog } from "@/components/movie-detail-dialog";
 import { AccountSheet, HamburgerMenu } from "@/components/hamburger-menu";
 import { FilterSortMenu } from "@/components/filter-sort-menu";
@@ -20,8 +21,16 @@ type User = {
   id?: string;
 };
 
-export function SignedInHome({ user }: { user: User }) {
-  const [refreshKey, setRefreshKey] = useState(0);
+export function SignedInHome({
+  user,
+  initialMovies,
+}: {
+  user: User;
+  // Loaded on the server with the page; null if that failed
+  initialMovies: Movie[] | null;
+}) {
+  const library = useLibrary(initialMovies);
+  const allMovies = library.movies;
   const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
 
   // Lifted search/filter/sort/view state
@@ -44,7 +53,6 @@ export function SignedInHome({ user }: { user: User }) {
 
   useEffect(() => { localStorage.setItem("sortBy", sortBy); }, [sortBy]);
   useEffect(() => { localStorage.setItem("viewMode", viewMode); }, [viewMode]);
-  const [allMovies, setAllMovies] = useState<Movie[]>([]);
 
   // Controlled add dialog state (for pre-filling from empty search prompt)
   const [addDialogOpen, setAddDialogOpen] = useState(false);
@@ -52,11 +60,6 @@ export function SignedInHome({ user }: { user: User }) {
 
   // Mobile account sheet (opened from the tab bar)
   const [accountOpen, setAccountOpen] = useState(false);
-
-  // Stable callback for MovieCollection to report loaded movies
-  const handleMoviesLoaded = useCallback((movies: Movie[]) => {
-    setAllMovies(movies);
-  }, []);
 
   function handleExportCSV() {
     if (allMovies.length === 0) return;
@@ -206,14 +209,16 @@ export function SignedInHome({ user }: { user: User }) {
 
         {/* Movie grid/list */}
         <MovieCollection
-          refreshKey={refreshKey}
+          movies={allMovies}
+          loading={library.isLoading}
+          loadFailed={library.loadFailed}
+          onRetry={library.retry}
           onMovieClick={(movie) => setSelectedMovie(movie)}
           search={search}
           sortBy={sortBy}
           typeFilter={typeFilter}
           platformFilter={platformFilter}
           viewMode={viewMode}
-          onMoviesLoaded={handleMoviesLoaded}
           onAddWithQuery={(q) => {
             setAddDialogQuery(q);
             setAddDialogOpen(true);
@@ -224,8 +229,12 @@ export function SignedInHome({ user }: { user: User }) {
           movie={selectedMovie}
           open={selectedMovie !== null}
           onClose={() => setSelectedMovie(null)}
-          onMovieChanged={() => {
-            setRefreshKey((k) => k + 1);
+          onMovieUpdated={(id, patch) => {
+            library.updated(id, patch);
+            setSelectedMovie(null);
+          }}
+          onMovieDeleted={(id) => {
+            library.deleted(id);
             setSelectedMovie(null);
           }}
         />
@@ -236,7 +245,7 @@ export function SignedInHome({ user }: { user: User }) {
             setAddDialogOpen(open);
             if (!open) setAddDialogQuery("");
           }}
-          onMovieAdded={() => setRefreshKey((k) => k + 1)}
+          onMovieAdded={library.added}
           existingTitles={allMovies}
           initialQuery={addDialogQuery}
           onViewExisting={(mediaType, tmdbId) => {
