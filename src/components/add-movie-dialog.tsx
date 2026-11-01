@@ -235,8 +235,8 @@ export function AddMovieDialog({
   }
 
   return (
-    <ResponsiveModal open={open} onOpenChange={onOpenChange}>
-      <DialogHeader>
+    <ResponsiveModal open={open} onOpenChange={onOpenChange} mobile="fullscreen">
+      <DialogHeader className="pr-10">
         <ModalTitle className="text-lg">
           {step === "search" ? "Add to Library" : selectedMovie?.title}
         </ModalTitle>
