@@ -3,11 +3,11 @@ import { movies, moviePlatforms } from "@/db/schema";
 import { getCachedTitle } from "@/lib/tmdb";
 import { getPosterUrl } from "@/lib/tmdb-mappers";
 import { findSeasonError } from "@/lib/titles";
-import { countSeasons } from "@/lib/ownership";
+import { getLibrary } from "@/lib/library-data";
 import { getAuthenticatedUserId } from "@/lib/get-user";
 import { badRequest, parseJsonBody, serverError, unauthorized } from "@/lib/api";
 import { createMovieSchema } from "@/lib/schemas";
-import { and, eq, desc, inArray } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
 function alreadyInCollection(mediaType: string) {
@@ -122,65 +122,11 @@ export async function GET(request: NextRequest) {
   try {
     const platformFilter = request.nextUrl.searchParams.get("platform");
 
-    const userMovies = await db
-      .select()
-      .from(movies)
-      .where(eq(movies.userId, userId))
-      .orderBy(desc(movies.addedAt));
-
-    // One query for every movie's platforms instead of one per movie
-    const platformRows = userMovies.length
-      ? await db
-          .select()
-          .from(moviePlatforms)
-          .where(inArray(moviePlatforms.movieId, userMovies.map((m) => m.id)))
-      : [];
-
-    const platformsByMovie = new Map<number, typeof platformRows>();
-    for (const row of platformRows) {
-      const list = platformsByMovie.get(row.movieId);
-      if (list) list.push(row);
-      else platformsByMovie.set(row.movieId, [row]);
-    }
-
-    const moviesWithPlatforms = userMovies.map((movie) => {
-      // Parse metadata stored at insert time — always present, always has genres/cast
-      const metadata = movie.tmdbMetadataJson
-        ? JSON.parse(movie.tmdbMetadataJson)
-        : null;
-
-      return {
-        id: movie.id,
-        mediaType: movie.mediaType,
-        tmdbId: movie.tmdbId,
-        title: movie.title,
-        year: movie.year,
-        runtime: movie.runtimeMin,
-        posterPath: movie.posterPath,
-        posterUrl: getPosterUrl(movie.posterPath),
-        notes: movie.notes,
-        addedAt: movie.addedAt,
-        genres: metadata?.genres ?? [],
-        cast: metadata?.cast?.map((c: { name: string }) => c.name) ?? [],
-        director: metadata?.director ?? null,
-        creators: metadata?.creators ?? [],
-        // TV only: seasons you could own, for "3 of 5 seasons"
-        totalSeasons: countSeasons(metadata?.seasons),
-        platforms: (platformsByMovie.get(movie.id) ?? []).map((p) => ({
-          id: p.id,
-          platform: p.platform,
-          seasonNumber: p.seasonNumber,
-          resolution: p.resolution,
-          notes: p.notes,
-        })),
-      };
-    });
+    const library = await getLibrary(userId);
 
     const filtered = platformFilter
-      ? moviesWithPlatforms.filter((m) =>
-          m.platforms.some((p) => p.platform === platformFilter)
-        )
-      : moviesWithPlatforms;
+      ? library.filter((m) => m.platforms.some((p) => p.platform === platformFilter))
+      : library;
 
     return NextResponse.json({
       count: filtered.length,

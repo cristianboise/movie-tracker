@@ -1,6 +1,5 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import Image from "next/image";
 import { Film, Search, Tv } from "lucide-react";
 import { PlatformChips } from "@/components/platform-chips";
@@ -8,37 +7,11 @@ import { filterAndSort } from "@/lib/library";
 import { formatRuntime } from "@/lib/format";
 import { ownershipLabel } from "@/lib/ownership";
 import type { SortOption, TypeFilter, ViewMode } from "@/lib/library";
-import { getPosterUrl, type MediaType, type PosterSize } from "@/lib/tmdb-mappers";
+import { getPosterUrl, type PosterSize } from "@/lib/tmdb-mappers";
+import type { Movie } from "@/lib/movie-types";
 
-// ============================================================
-// TYPES
-// ============================================================
-
-type Platform = {
-  id: number;
-  platform: string;
-  seasonNumber: number | null;
-  resolution: string | null;
-  notes: string | null;
-};
-
-export type Movie = {
-  id: number;
-  mediaType: MediaType;
-  tmdbId: number;
-  title: string;
-  year: number | null;
-  runtime: number | null;
-  posterPath: string | null;
-  notes: string | null;
-  addedAt: string;
-  genres: string[];
-  cast: string[];
-  director: string | null;
-  creators: string[];
-  totalSeasons: number | null;
-  platforms: Platform[];
-};
+// The Movie type lives in lib/movie-types; re-exported so existing imports work
+export type { Movie } from "@/lib/movie-types";
 
 // ============================================================
 // POSTER
@@ -107,51 +80,31 @@ function SeasonSummary({ movie }: { movie: Movie }) {
 // ============================================================
 
 export function MovieCollection({
+  movies,
+  loading,
+  loadFailed,
+  onRetry,
   onMovieClick,
-  refreshKey,
   search,
   sortBy,
   typeFilter,
   platformFilter,
   viewMode,
-  onMoviesLoaded,
   onAddWithQuery,
 }: {
+  movies: Movie[];
+  // True only when there is nothing to show yet
+  loading: boolean;
+  loadFailed: boolean;
+  onRetry: () => void;
   onMovieClick: (movie: Movie) => void;
-  refreshKey: number;
   search: string;
   sortBy: SortOption;
   typeFilter: TypeFilter;
   platformFilter: string | null;
   viewMode: ViewMode;
-  onMoviesLoaded: (movies: Movie[]) => void;
   onAddWithQuery?: (query: string) => void;
 }) {
-  const [movies, setMovies] = useState<Movie[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState(false);
-
-  useEffect(() => {
-    async function fetchMovies() {
-      setLoading(true);
-      try {
-        const response = await fetch("/api/movies");
-        if (!response.ok) throw new Error(`Request failed: ${response.status}`);
-        const data = await response.json();
-        setMovies(data.movies);
-        onMoviesLoaded(data.movies);
-        setLoadError(false);
-      } catch (error) {
-        console.error("Failed to fetch movies:", error);
-        setLoadError(true);
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchMovies();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [refreshKey]);
-
   const sorted = filterAndSort(movies, { search, typeFilter, platformFilter, sortBy });
 
   // Skeleton loading
@@ -187,13 +140,13 @@ export function MovieCollection({
     );
   }
 
-  if (loadError && movies.length === 0) {
+  if (loadFailed) {
     return (
       <div className="mt-24 flex flex-col items-center gap-3 text-center" role="alert">
         <p className="font-medium">Couldn&rsquo;t load your library</p>
         <p className="text-sm text-muted-foreground">Check your connection and try again.</p>
         <button
-          onClick={() => window.location.reload()}
+          onClick={onRetry}
           className="mt-1 min-h-11 rounded-lg border px-4 text-sm font-medium hover:bg-accent"
         >
           Retry
