@@ -1,10 +1,11 @@
-import { searchMovies, getPosterUrl } from "@/lib/tmdb";
+import { searchTitles } from "@/lib/tmdb";
 import { getAuthenticatedUserId } from "@/lib/get-user";
 import { parseSearchParams, serverError, unauthorized } from "@/lib/api";
 import { tmdbSearchQuerySchema } from "@/lib/schemas";
 import { NextRequest, NextResponse } from "next/server";
 
 // Visit /api/tmdb/search?q=inception (while signed in) to test this.
+// Optional &type=movie (default), tv, or multi (both together).
 // The "q" is called a query parameter — it's how the browser
 // passes your search term to the server.
 export async function GET(request: NextRequest) {
@@ -14,26 +15,15 @@ export async function GET(request: NextRequest) {
 
   const parsed = parseSearchParams(request.nextUrl.searchParams, tmdbSearchQuerySchema);
   if (!parsed.ok) return parsed.response;
-  const { q: query } = parsed.data;
+  const { q: query, type } = parsed.data;
 
   try {
-    const results = await searchMovies(query);
-
-    // Reshape the results to only include what we care about,
-    // and build full poster URLs while we're at it.
-    const simplified = results.map((movie) => ({
-      tmdbId: movie.id,
-      title: movie.title,
-      year: movie.release_date ? movie.release_date.substring(0, 4) : null,
-      overview: movie.overview,
-      posterUrl: getPosterUrl(movie.poster_path),
-      rating: movie.vote_average,
-    }));
+    const results = await searchTitles(query, type);
 
     return NextResponse.json({
       query,
-      resultCount: simplified.length,
-      results: simplified,
+      resultCount: results.length,
+      results,
     });
   } catch (error) {
     return serverError(error);
