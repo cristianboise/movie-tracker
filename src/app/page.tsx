@@ -7,7 +7,7 @@ export default async function Home() {
 
   if (!session?.user) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-background text-foreground">
+      <main className="flex min-h-dvh items-center justify-center bg-background text-foreground">
         <div className="mx-auto max-w-sm px-4 text-center">
           <h1 className="text-3xl font-bold">Digital Movie Library</h1>
           <p className="mt-2 text-muted-foreground">

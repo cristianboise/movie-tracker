@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { SessionProvider } from "next-auth/react";
 import "./globals.css";
@@ -16,6 +16,23 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Digital Movie Library",
   description: "Track your digital movie collection",
+  appleWebApp: {
+    capable: true,
+    title: "Movie Library",
+    statusBarStyle: "default",
+  },
+};
+
+// viewport-fit=cover lets the layout use the full screen on notched phones
+// (the safe-area padding keeps content clear of the notch and home indicator).
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)", color: "#0a0a0a" },
+  ],
 };
 
 // Inline script that runs before React hydrates.

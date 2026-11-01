@@ -1,13 +1,15 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { Library, Menu, Plus, Search, X } from "lucide-react";
 import { AddMovieDialog } from "@/components/add-movie-dialog";
 import { MovieCollection } from "@/components/movie-collection";
 import type { Movie } from "@/components/movie-collection";
 import { MovieDetailDialog } from "@/components/movie-detail-dialog";
-import { HamburgerMenu } from "@/components/hamburger-menu";
+import { AccountSheet, HamburgerMenu } from "@/components/hamburger-menu";
 import { FilterSortMenu } from "@/components/filter-sort-menu";
-import type { SortOption, ViewMode } from "@/components/filter-sort-menu";
+import { countByType } from "@/lib/library";
+import type { SortOption, TypeFilter, ViewMode } from "@/lib/library";
 import { PLATFORMS } from "@/lib/platforms";
 
 type User = {
@@ -25,12 +27,16 @@ export function SignedInHome({ user }: { user: User }) {
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<SortOption>("title-asc");
   const [platformFilter, setPlatformFilter] = useState<string | null>(null);
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const [allMovies, setAllMovies] = useState<Movie[]>([]);
 
   // Controlled add dialog state (for pre-filling from empty search prompt)
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [addDialogQuery, setAddDialogQuery] = useState("");
+
+  // Mobile account sheet (opened from the tab bar)
+  const [accountOpen, setAccountOpen] = useState(false);
 
   // Stable callback for MovieCollection to report loaded movies
   const handleMoviesLoaded = useCallback((movies: Movie[]) => {
@@ -95,9 +101,14 @@ export function SignedInHome({ user }: { user: User }) {
     ).length;
   }
 
+  const typeCounts = countByType(allMovies);
+  // The switcher only appears once the library has TV shows in it
+  const showTypeFilter = typeCounts.tv > 0;
+
   return (
-    <main className="min-h-screen bg-background text-foreground">
-      <div className="mx-auto max-w-7xl px-4 py-3">
+    <main className="min-h-dvh bg-background text-foreground">
+      {/* Bottom padding clears the mobile tab bar and the iPhone home indicator */}
+      <div className="mx-auto max-w-7xl px-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))] pt-3 md:pb-6">
 
         {/* App identity — scrolls away, not sticky */}
         <div className="flex items-center gap-2.5 pb-3 pt-2">
@@ -130,89 +141,89 @@ export function SignedInHome({ user }: { user: User }) {
           </span>
         </div>
 
-        {/* Single-row controls: search + filter + add + menu */}
+        {/* Controls. Desktop: menu, filter, add, search in one row.
+            Phone: search and filter (menu and add live in the tab bar). */}
         <div className="sticky top-0 z-30 -mx-4 bg-background/95 px-4 pb-2 pt-3 backdrop-blur supports-[backdrop-filter]:bg-background/80">
           <div className="flex items-center gap-2">
-            {/* Hamburger menu */}
-            <HamburgerMenu user={user} onExportCSV={handleExportCSV} />
+            <div className="hidden md:block">
+              <HamburgerMenu user={user} onExportCSV={handleExportCSV} />
+            </div>
 
-            {/* Filter/sort/view dropdown */}
-            <FilterSortMenu
-              sortBy={sortBy}
-              onSortChange={setSortBy}
-              platformFilter={platformFilter}
-              onPlatformFilterChange={setPlatformFilter}
-              platformCounts={platformCounts}
-              totalCount={allMovies.length}
-              viewMode={viewMode}
-              onViewModeChange={setViewMode}
-            />
+            <div className="order-last md:order-none">
+              <FilterSortMenu
+                sortBy={sortBy}
+                onSortChange={setSortBy}
+                platformFilter={platformFilter}
+                onPlatformFilterChange={setPlatformFilter}
+                platformCounts={platformCounts}
+                totalCount={allMovies.length}
+                viewMode={viewMode}
+                onViewModeChange={setViewMode}
+              />
+            </div>
 
-            {/* Add movie button — compact icon */}
-            <AddMovieDialog
-              onMovieAdded={() => setRefreshKey((k) => k + 1)}
-              existingTmdbIds={allMovies.map((m) => m.tmdbId)}
-              controlledOpen={addDialogOpen}
-              onControlledOpenChange={(open) => {
-                setAddDialogOpen(open);
-                if (!open) setAddDialogQuery("");
-              }}
-              initialQuery={addDialogQuery}
-              onViewExisting={(tmdbId) => {
-                const movie = allMovies.find((m) => m.tmdbId === tmdbId);
-                if (movie) {
-                  setAddDialogOpen(false);
-                  setAddDialogQuery("");
-                  setSelectedMovie(movie);
-                }
-              }}
-            />
+            <button
+              onClick={() => setAddDialogOpen(true)}
+              className="hidden h-10 w-10 items-center justify-center rounded-lg text-foreground transition-colors hover:bg-accent md:flex"
+              aria-label="Add movie"
+            >
+              <Plus className="h-[22px] w-[22px]" />
+            </button>
 
             {/* Search input — takes remaining space */}
             <div className="relative flex-1">
-              {/* Search icon inside input */}
-              <svg
-                className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <circle cx="11" cy="11" r="8" />
-                <line x1="21" y1="21" x2="16.65" y2="16.65" />
-              </svg>
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              {/* text-base on phones: iOS Safari zooms the page on inputs under 16px */}
               <input
                 type="text"
+                inputMode="search"
+                enterKeyHint="search"
+                autoComplete="off"
                 placeholder="Search your library"
+                aria-label="Search your library"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full rounded-lg border border-input bg-background py-2.5 pl-9 pr-8 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                className="h-11 w-full rounded-lg border border-input bg-background pl-9 pr-11 text-base text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring md:h-10 md:pr-8 md:text-sm"
               />
-              {/* Clear button — only visible when search has text */}
               {search && (
                 <button
                   onClick={() => setSearch("")}
-                  className="absolute right-2.5 top-1/2 z-10 -translate-y-1/2 rounded p-0.5 text-muted-foreground hover:text-foreground"
+                  className="absolute right-0 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center text-muted-foreground hover:text-foreground md:h-10 md:w-9"
                   aria-label="Clear search"
                 >
-                  <svg
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="h-3.5 w-3.5"
-                  >
-                    <line x1="18" y1="6" x2="6" y2="18" />
-                    <line x1="6" y1="6" x2="18" y2="18" />
-                  </svg>
+                  <X className="h-4 w-4" />
                 </button>
               )}
             </div>
           </div>
+
+          {showTypeFilter && (
+            <div className="mt-2 flex gap-1 rounded-lg bg-muted p-1 md:inline-flex" role="group" aria-label="Show">
+              {(
+                [
+                  ["all", "All"],
+                  ["movie", "Movies"],
+                  ["tv", "TV"],
+                ] as const
+              ).map(([value, label]) => (
+                <button
+                  key={value}
+                  onClick={() => setTypeFilter(value)}
+                  aria-pressed={typeFilter === value}
+                  className={`min-h-9 flex-1 rounded-md px-3 text-sm font-medium transition-colors md:flex-none md:px-5 ${
+                    typeFilter === value
+                      ? "bg-background text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {label}
+                  <span className="ml-1.5 text-xs tabular-nums text-muted-foreground">
+                    {typeCounts[value]}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Movie grid/list */}
@@ -221,6 +232,7 @@ export function SignedInHome({ user }: { user: User }) {
           onMovieClick={(movie) => setSelectedMovie(movie)}
           search={search}
           sortBy={sortBy}
+          typeFilter={typeFilter}
           platformFilter={platformFilter}
           viewMode={viewMode}
           onMoviesLoaded={handleMoviesLoaded}
@@ -239,7 +251,64 @@ export function SignedInHome({ user }: { user: User }) {
             setSelectedMovie(null);
           }}
         />
+
+        <AddMovieDialog
+          open={addDialogOpen}
+          onOpenChange={(open) => {
+            setAddDialogOpen(open);
+            if (!open) setAddDialogQuery("");
+          }}
+          onMovieAdded={() => setRefreshKey((k) => k + 1)}
+          existingTmdbIds={allMovies.filter((m) => m.mediaType === "movie").map((m) => m.tmdbId)}
+          initialQuery={addDialogQuery}
+          onViewExisting={(tmdbId) => {
+            const movie = allMovies.find((m) => m.mediaType === "movie" && m.tmdbId === tmdbId);
+            if (movie) {
+              setAddDialogOpen(false);
+              setAddDialogQuery("");
+              setSelectedMovie(movie);
+            }
+          }}
+        />
+
+        <AccountSheet
+          user={user}
+          open={accountOpen}
+          onOpenChange={setAccountOpen}
+          onExportCSV={handleExportCSV}
+        />
       </div>
+
+      {/* Phone tab bar */}
+      <nav
+        aria-label="Primary"
+        className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur supports-[backdrop-filter]:bg-background/80 md:hidden"
+      >
+        <div className="mx-auto grid h-16 max-w-md grid-cols-3 items-center">
+          <button
+            onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+            aria-current="page"
+            className="flex h-full flex-col items-center justify-center gap-0.5 text-xs font-medium text-foreground"
+          >
+            <Library className="h-6 w-6" />
+            Library
+          </button>
+          <button
+            onClick={() => setAddDialogOpen(true)}
+            aria-label="Add movie"
+            className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-foreground text-background shadow-md transition-transform active:scale-95"
+          >
+            <Plus className="h-6 w-6" strokeWidth={2.5} />
+          </button>
+          <button
+            onClick={() => setAccountOpen(true)}
+            className="flex h-full flex-col items-center justify-center gap-0.5 text-xs font-medium text-muted-foreground"
+          >
+            <Menu className="h-6 w-6" />
+            Menu
+          </button>
+        </div>
+      </nav>
     </main>
   );
 }

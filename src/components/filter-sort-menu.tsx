@@ -1,92 +1,40 @@
 "use client";
 
+import { Grid3x3, LayoutGrid, List, SlidersHorizontal } from "lucide-react";
 import { PLATFORMS } from "@/lib/platforms";
+import type { SortOption, ViewMode } from "@/lib/library";
+import { useIsDesktop } from "@/hooks/use-media-query";
 import { PlatformLogo } from "@/components/platform-logos";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-
-// ============================================================
-// TYPES
-// ============================================================
-
-export type SortOption = "title-asc" | "title-desc" | "added" | "year-desc" | "year-asc";
-export type ViewMode = "grid" | "compact" | "list";
+import {
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+} from "@/components/ui/drawer";
 
 const SORT_OPTIONS: { value: SortOption; label: string }[] = [
-  { value: "title-asc", label: "A\u2013Z" },
-  { value: "title-desc", label: "Z\u2013A" },
+  { value: "title-asc", label: "A–Z" },
+  { value: "title-desc", label: "Z–A" },
   { value: "added", label: "Recently Added" },
   { value: "year-desc", label: "Newest First" },
   { value: "year-asc", label: "Oldest First" },
 ];
 
-// SVG icons for view modes
-function GridIcon({ active }: { active: boolean }) {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      strokeWidth={active ? "2.5" : "2"} strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="3" width="7" height="7" />
-      <rect x="14" y="3" width="7" height="7" />
-      <rect x="3" y="14" width="7" height="7" />
-      <rect x="14" y="14" width="7" height="7" />
-    </svg>
-  );
-}
-
-function CompactIcon({ active }: { active: boolean }) {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      strokeWidth={active ? "2.5" : "2"} strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="3" width="4" height="4" />
-      <rect x="10" y="3" width="4" height="4" />
-      <rect x="17" y="3" width="4" height="4" />
-      <rect x="3" y="10" width="4" height="4" />
-      <rect x="10" y="10" width="4" height="4" />
-      <rect x="17" y="10" width="4" height="4" />
-      <rect x="3" y="17" width="4" height="4" />
-      <rect x="10" y="17" width="4" height="4" />
-      <rect x="17" y="17" width="4" height="4" />
-    </svg>
-  );
-}
-
-function ListIcon({ active }: { active: boolean }) {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      strokeWidth={active ? "2.5" : "2"} strokeLinecap="round" strokeLinejoin="round">
-      <line x1="8" y1="6" x2="21" y2="6" />
-      <line x1="8" y1="12" x2="21" y2="12" />
-      <line x1="8" y1="18" x2="21" y2="18" />
-      <line x1="3" y1="6" x2="3.01" y2="6" />
-      <line x1="3" y1="12" x2="3.01" y2="12" />
-      <line x1="3" y1="18" x2="3.01" y2="18" />
-    </svg>
-  );
-}
-
-const VIEW_OPTIONS: { value: ViewMode; label: string; Icon: typeof GridIcon }[] = [
-  { value: "grid", label: "Large", Icon: GridIcon },
-  { value: "compact", label: "Small", Icon: CompactIcon },
-  { value: "list", label: "List", Icon: ListIcon },
+const VIEW_OPTIONS: { value: ViewMode; label: string; Icon: typeof LayoutGrid }[] = [
+  { value: "grid", label: "Large", Icon: LayoutGrid },
+  { value: "compact", label: "Small", Icon: Grid3x3 },
+  { value: "list", label: "List", Icon: List },
 ];
 
-// ============================================================
-// COMPONENT
-// ============================================================
-
-export function FilterSortMenu({
-  sortBy,
-  onSortChange,
-  platformFilter,
-  onPlatformFilterChange,
-  platformCounts,
-  totalCount,
-  viewMode,
-  onViewModeChange,
-}: {
+type Props = {
   sortBy: SortOption;
   onSortChange: (sort: SortOption) => void;
   platformFilter: string | null;
@@ -95,139 +43,161 @@ export function FilterSortMenu({
   totalCount: number;
   viewMode: ViewMode;
   onViewModeChange: (mode: ViewMode) => void;
-}) {
-  const hasActiveFilter = platformFilter !== null;
+};
 
+const SECTION_LABEL = "mb-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground";
+
+// The controls themselves. Shown in a dropdown on desktop and a bottom
+// sheet on phones, so sizes are touch-friendly below `md` and compact above.
+function FilterSortPanel({
+  sortBy,
+  onSortChange,
+  platformFilter,
+  onPlatformFilterChange,
+  platformCounts,
+  totalCount,
+  viewMode,
+  onViewModeChange,
+}: Props) {
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <button
-          className="relative flex h-10 w-10 items-center justify-center rounded-lg text-foreground hover:bg-accent transition-colors"
-          aria-label="Filter and sort"
-        >
-          {/* Sliders icon */}
-          <svg
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <line x1="4" y1="21" x2="4" y2="14" />
-            <line x1="4" y1="10" x2="4" y2="3" />
-            <line x1="12" y1="21" x2="12" y2="12" />
-            <line x1="12" y1="8" x2="12" y2="3" />
-            <line x1="20" y1="21" x2="20" y2="16" />
-            <line x1="20" y1="12" x2="20" y2="3" />
-            <line x1="1" y1="14" x2="7" y2="14" />
-            <line x1="9" y1="8" x2="15" y2="8" />
-            <line x1="17" y1="16" x2="23" y2="16" />
-          </svg>
-          {/* Active filter indicator dot */}
-          {hasActiveFilter && (
-            <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-blue-500" />
-          )}
-        </button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56 p-0">
-        {/* View mode section */}
-        <div className="border-b px-3 py-2">
-          <p className="mb-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            View
-          </p>
-          <div className="flex gap-1">
-            {VIEW_OPTIONS.map((opt) => {
-              const isActive = viewMode === opt.value;
-              return (
-                <button
-                  key={opt.value}
-                  onClick={() => onViewModeChange(opt.value)}
-                  className={`flex flex-1 items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-medium transition-colors ${
-                    isActive
-                      ? "bg-foreground text-background"
-                      : "text-muted-foreground hover:text-foreground hover:bg-accent"
-                  }`}
-                >
-                  <opt.Icon active={isActive} />
-                  <span>{opt.label}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Sort section */}
-        <div className="border-b px-3 py-2">
-          <p className="mb-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            Sort by
-          </p>
-          <div className="flex flex-wrap gap-1">
-            {SORT_OPTIONS.map((option) => (
+    <>
+      {/* View mode section */}
+      <div className="border-b px-3 py-3 md:py-2">
+        <p className={SECTION_LABEL}>View</p>
+        <div className="flex gap-1.5 md:gap-1">
+          {VIEW_OPTIONS.map((opt) => {
+            const isActive = viewMode === opt.value;
+            return (
               <button
-                key={option.value}
-                onClick={() => onSortChange(option.value)}
-                className={`rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${
-                  sortBy === option.value
+                key={opt.value}
+                onClick={() => onViewModeChange(opt.value)}
+                aria-pressed={isActive}
+                className={`flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-md px-2 text-sm font-medium transition-colors md:min-h-8 md:text-xs ${
+                  isActive
                     ? "bg-foreground text-background"
-                    : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                    : "text-muted-foreground hover:bg-accent hover:text-foreground"
                 }`}
               >
-                {option.label}
+                <opt.Icon className="h-4 w-4" strokeWidth={isActive ? 2.5 : 2} />
+                <span>{opt.label}</span>
               </button>
-            ))}
-          </div>
+            );
+          })}
         </div>
+      </div>
 
-        {/* Platform filter section */}
-        <div className="px-3 py-2">
-          <p className="mb-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            Platform
-          </p>
-          <div className="space-y-0.5">
+      {/* Sort section */}
+      <div className="border-b px-3 py-3 md:py-2">
+        <p className={SECTION_LABEL}>Sort by</p>
+        <div className="flex flex-wrap gap-1.5 md:gap-1">
+          {SORT_OPTIONS.map((option) => (
             <button
-              onClick={() => onPlatformFilterChange(null)}
-              className={`flex w-full items-center justify-between rounded-md px-2 py-1.5 text-sm transition-colors ${
-                platformFilter === null
-                  ? "bg-accent font-medium text-foreground"
-                  : "text-muted-foreground hover:text-foreground hover:bg-accent"
+              key={option.value}
+              onClick={() => onSortChange(option.value)}
+              aria-pressed={sortBy === option.value}
+              className={`min-h-11 rounded-full px-4 text-sm font-medium transition-colors md:min-h-7 md:px-2.5 md:text-xs ${
+                sortBy === option.value
+                  ? "bg-foreground text-background"
+                  : "text-muted-foreground hover:bg-accent hover:text-foreground"
               }`}
             >
-              <span>All</span>
-              <span className="text-xs tabular-nums">{totalCount}</span>
+              {option.label}
             </button>
-            {PLATFORMS.map((platform) => {
-              const count = platformCounts[platform.id] || 0;
-              if (count === 0) return null;
-              const isActive = platformFilter === platform.id;
-              return (
-                <button
-                  key={platform.id}
-                  onClick={() =>
-                    onPlatformFilterChange(
-                      platformFilter === platform.id ? null : platform.id
-                    )
-                  }
-                  className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors ${
-                    isActive
-                      ? "bg-accent font-medium text-foreground"
-                      : "text-muted-foreground hover:text-foreground hover:bg-accent"
-                  }`}
-                >
-                  <PlatformLogo
-                    platformId={platform.id}
-                    className="h-4 w-4 shrink-0"
-                  />
-                  <span className="flex-1 text-left">{platform.label}</span>
-                  <span className="text-xs tabular-nums">{count}</span>
-                </button>
-              );
-            })}
-          </div>
+          ))}
         </div>
-      </DropdownMenuContent>
-    </DropdownMenu>
+      </div>
+
+      {/* Platform filter section */}
+      <div className="px-3 py-3 md:py-2">
+        <p className={SECTION_LABEL}>Platform</p>
+        <div className="space-y-0.5">
+          <button
+            onClick={() => onPlatformFilterChange(null)}
+            aria-pressed={platformFilter === null}
+            className={`flex min-h-11 w-full items-center justify-between rounded-md px-2 text-sm transition-colors md:min-h-8 ${
+              platformFilter === null
+                ? "bg-accent font-medium text-foreground"
+                : "text-muted-foreground hover:bg-accent hover:text-foreground"
+            }`}
+          >
+            <span>All</span>
+            <span className="text-xs tabular-nums">{totalCount}</span>
+          </button>
+          {PLATFORMS.map((platform) => {
+            const count = platformCounts[platform.id] || 0;
+            if (count === 0) return null;
+            const isActive = platformFilter === platform.id;
+            return (
+              <button
+                key={platform.id}
+                onClick={() => onPlatformFilterChange(isActive ? null : platform.id)}
+                aria-pressed={isActive}
+                className={`flex min-h-11 w-full items-center gap-2 rounded-md px-2 text-sm transition-colors md:min-h-8 ${
+                  isActive
+                    ? "bg-accent font-medium text-foreground"
+                    : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                }`}
+              >
+                <PlatformLogo platformId={platform.id} className="h-4 w-4 shrink-0" />
+                <span className="flex-1 text-left">{platform.label}</span>
+                <span className="text-xs tabular-nums">{count}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </>
+  );
+}
+
+// ============================================================
+// COMPONENT
+// ============================================================
+
+export function FilterSortMenu(props: Props) {
+  const isDesktop = useIsDesktop();
+  const hasActiveFilter = props.platformFilter !== null;
+
+  const trigger = (
+    <button
+      className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-foreground transition-colors hover:bg-accent md:h-10 md:w-10"
+      aria-label={hasActiveFilter ? "Filter and sort (filter active)" : "Filter and sort"}
+    >
+      <SlidersHorizontal className="h-5 w-5" />
+      {/* Active filter indicator dot */}
+      {hasActiveFilter && (
+        <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-blue-500 md:right-1.5 md:top-1.5" />
+      )}
+    </button>
+  );
+
+  if (isDesktop) {
+    return (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>{trigger}</DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-56 p-0">
+          <FilterSortPanel {...props} />
+        </DropdownMenuContent>
+      </DropdownMenu>
+    );
+  }
+
+  return (
+    <Drawer>
+      <DrawerTrigger asChild>{trigger}</DrawerTrigger>
+      <DrawerContent>
+        <DrawerHeader className="-mx-4 px-3 pb-2">
+          <DrawerTitle className="text-lg">Filter &amp; sort</DrawerTitle>
+        </DrawerHeader>
+        <div className="-mx-4">
+          <FilterSortPanel {...props} />
+        </div>
+        <DrawerClose asChild>
+          <Button className="mt-3 w-full" size="lg">
+            Done
+          </Button>
+        </DrawerClose>
+      </DrawerContent>
+    </Drawer>
   );
 }

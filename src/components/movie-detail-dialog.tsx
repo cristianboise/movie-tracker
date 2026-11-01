@@ -3,66 +3,47 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import { Barlow_Condensed } from "next/font/google";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { DialogHeader } from "@/components/ui/dialog";
+import { ResponsiveModal, ModalTitle } from "@/components/ui/responsive-modal";
+import { DEFAULT_RESOLUTION } from "@/lib/platforms";
+import { getPosterUrl } from "@/lib/tmdb-mappers";
+import { PlatformChips } from "@/components/platform-chips";
+import { PlatformPicker, type PlatformSelection } from "@/components/platform-picker";
+import type { Movie } from "@/components/movie-collection";
 
 const barlowCondensed = Barlow_Condensed({
   weight: "700",
   subsets: ["latin"],
   display: "swap",
 });
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { PLATFORMS, RESOLUTIONS, DEFAULT_RESOLUTION, getPlatform, sortPlatforms } from "@/lib/platforms";
-import { PlatformLogo } from "@/components/platform-logos";
 
 // ============================================================
 // TYPES
 // ============================================================
 
-type Platform = {
-  id: number;
-  platform: string;
-  resolution: string | null;
-  notes: string | null;
-};
-
-type Movie = {
-  id: number;
-  tmdbId: number;
-  title: string;
-  year: number | null;
-  runtime: number | null;
-  posterUrl: string | null;
-  notes: string | null;
-  addedAt: string;
-  platforms: Platform[];
-};
-
+// The parts of the cached TMDB metadata shown here
 type TmdbData = {
-  tmdbId: number;
-  title: string;
-  year: string | null;
-  runtime: number | null;
   overview: string;
   tagline: string;
   genres: string[];
   rating: number;
-  posterUrl: string | null;
   backdropUrl: string | null;
   cast: { name: string; character: string }[];
-  director: string | null;
   imdbId: string | null;
+  // Movies
+  director?: string | null;
+  // TV
+  creators?: string[];
 };
 
-type PlatformSelection = {
-  platform: string;
-  resolution: string;
-};
+function toSelections(movie: Movie): PlatformSelection[] {
+  return movie.platforms.map((p) => ({
+    platform: p.platform,
+    resolution: p.resolution || DEFAULT_RESOLUTION,
+  }));
+}
 
 // ============================================================
 // COMPONENT
@@ -80,7 +61,6 @@ export function MovieDetailDialog({
   onMovieChanged: () => void;
 }) {
   const [tmdbData, setTmdbData] = useState<TmdbData | null>(null);
-  const [loading, setLoading] = useState(false);
   const [editing, setEditing] = useState(false);
   const [platformSelections, setPlatformSelections] = useState<PlatformSelection[]>([]);
   const [notes, setNotes] = useState("");
@@ -96,51 +76,28 @@ export function MovieDetailDialog({
     setConfirmDelete(false);
     setError(null);
     setNotes(movie.notes || "");
-    setPlatformSelections(
-      movie.platforms.map((p) => ({
-        platform: p.platform,
-        resolution: p.resolution || DEFAULT_RESOLUTION,
-      }))
-    );
+    setPlatformSelections(toSelections(movie));
 
+    // Ignore the response if another title was opened in the meantime
+    let cancelled = false;
     async function fetchTmdb() {
-      setLoading(true);
       try {
-        const response = await fetch(`/api/tmdb/movie?id=${movie!.tmdbId}`);
+        const response = await fetch(
+          `/api/tmdb/movie?id=${movie!.tmdbId}&type=${movie!.mediaType}`
+        );
         const data = await response.json();
-        if (response.ok) {
-          setTmdbData(data);
-        }
+        if (response.ok && !cancelled) setTmdbData(data);
       } catch {
         // Not critical
-      } finally {
-        setLoading(false);
       }
     }
     fetchTmdb();
+    return () => {
+      cancelled = true;
+    };
   }, [movie, open]);
 
   if (!movie) return null;
-
-  function togglePlatform(platformId: string) {
-    const existing = platformSelections.find((p) => p.platform === platformId);
-    if (existing) {
-      setPlatformSelections(platformSelections.filter((p) => p.platform !== platformId));
-    } else {
-      setPlatformSelections([
-        ...platformSelections,
-        { platform: platformId, resolution: DEFAULT_RESOLUTION },
-      ]);
-    }
-  }
-
-  function setResolution(platformId: string, resolution: string) {
-    setPlatformSelections(
-      platformSelections.map((p) =>
-        p.platform === platformId ? { ...p, resolution } : p
-      )
-    );
-  }
 
   async function handleSave() {
     if (!movie) return;
@@ -196,67 +153,73 @@ export function MovieDetailDialog({
     }
   }
 
+  const creditLabel = tmdbData?.creators?.length ? "Created by" : "Director";
+  const creditValue = tmdbData?.creators?.length
+    ? tmdbData.creators.join(", ")
+    : tmdbData?.director;
+  const yearRuntime = `${movie.year ?? ""}${movie.runtime ? ` \u00B7 ${movie.runtime} min` : ""}`;
+  const posterUrl = getPosterUrl(movie.posterPath, "w342");
+
   return (
-    <Dialog open={open} onOpenChange={(isOpen) => { if (!isOpen) onClose(); }}>
-      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-md p-0">
-        {/* Backdrop hero */}
-        {tmdbData?.backdropUrl ? (
-          <div className="relative h-44 w-full overflow-hidden rounded-t-lg">
-            <Image
-              src={tmdbData.backdropUrl}
-              alt=""
-              fill
-              className="object-cover"
-              sizes="(max-width: 640px) 100vw, 448px"
-              priority
-            />
-            {/* Gradient overlay so text is readable */}
-            <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
-            {/* Title + year overlaid on backdrop */}
-            <div className="absolute bottom-0 left-0 right-0 px-6 pb-3">
-              <DialogHeader>
-                <DialogTitle className="text-xl text-foreground drop-shadow-sm">
-                  {movie.title}
-                </DialogTitle>
-              </DialogHeader>
-              <p className="text-sm text-muted-foreground">
-                {movie.year}{movie.runtime ? ` \u00B7 ${movie.runtime} min` : ""}
-              </p>
-            </div>
-          </div>
-        ) : (
-          <div className="px-6 pt-6">
+    <ResponsiveModal
+      open={open}
+      onOpenChange={(isOpen) => {
+        if (!isOpen) onClose();
+      }}
+      flush
+    >
+      {/* Backdrop hero */}
+      {tmdbData?.backdropUrl ? (
+        <div className="relative h-44 w-full overflow-hidden">
+          <Image
+            src={tmdbData.backdropUrl}
+            alt=""
+            fill
+            className="object-cover"
+            sizes="(max-width: 640px) 100vw, 448px"
+            priority
+          />
+          {/* Gradient overlay so text is readable */}
+          <div className="absolute inset-0 bg-gradient-to-t from-popover via-popover/60 to-transparent" />
+          {/* Title + year overlaid on backdrop */}
+          <div className="absolute bottom-0 left-0 right-0 px-6 pb-3">
             <DialogHeader>
-              <DialogTitle className="text-xl">{movie.title}</DialogTitle>
+              <ModalTitle className="text-xl text-foreground drop-shadow-sm">
+                {movie.title}
+              </ModalTitle>
             </DialogHeader>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {movie.year}{movie.runtime ? ` \u00B7 ${movie.runtime} min` : ""}
-            </p>
+            <p className="text-sm text-muted-foreground">{yearRuntime}</p>
           </div>
-        )}
+        </div>
+      ) : (
+        <div className="px-6 pt-4">
+          <DialogHeader>
+            <ModalTitle className="text-xl">{movie.title}</ModalTitle>
+          </DialogHeader>
+          <p className="mt-1 text-sm text-muted-foreground">{yearRuntime}</p>
+        </div>
+      )}
 
-        {/* Content area — padded */}
-        <div className="space-y-4 px-6 pb-6">
-
+      {/* Content area — padded */}
+      <div className="space-y-4 px-6 pb-6 pt-4">
         {error && (
-          <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+          <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive" role="alert">
             {error}
           </div>
         )}
 
         {/* Poster + metadata */}
         <div className="flex gap-4">
-          {movie.posterUrl && (
+          {posterUrl && (
             <Image
-              src={movie.posterUrl}
+              src={posterUrl}
               alt={movie.title}
               width={112}
               height={160}
-              className="h-40 w-28 rounded-lg object-cover shadow-md"
-              sizes="112px"
+              className="h-40 w-28 shrink-0 rounded-lg object-cover shadow-md"
             />
           )}
-          <div className="flex-1 space-y-1">
+          <div className="min-w-0 flex-1 space-y-1">
             {tmdbData?.tagline && (
               <p className="text-sm italic text-muted-foreground">
                 &ldquo;{tmdbData.tagline}&rdquo;
@@ -281,7 +244,7 @@ export function MovieDetailDialog({
                 href={`https://www.imdb.com/title/${tmdbData.imdbId}/`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className={`mt-1 inline-flex items-center rounded px-2 py-0.5 text-black ${barlowCondensed.className}`}
+                className={`mt-1 inline-flex min-h-8 items-center rounded px-2.5 text-black ${barlowCondensed.className}`}
                 style={{
                   backgroundColor: "#F5C518",
                   fontSize: "1rem",
@@ -302,13 +265,13 @@ export function MovieDetailDialog({
           </p>
         )}
 
-        {/* Director */}
-        {tmdbData?.director && (
+        {/* Director / creators */}
+        {creditValue && (
           <div>
             <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Director
+              {creditLabel}
             </p>
-            <p className="text-sm text-foreground">{tmdbData.director}</p>
+            <p className="text-sm text-foreground">{creditValue}</p>
           </div>
         )}
 
@@ -337,18 +300,14 @@ export function MovieDetailDialog({
               Platforms
             </p>
             {!editing && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setEditing(true)}
-              >
+              <Button variant="ghost" size="sm" onClick={() => setEditing(true)}>
                 Edit
               </Button>
             )}
           </div>
 
           {editing ? (
-            <div className="space-y-2">
+            <div className="space-y-3">
               {/* Notes field — above platforms */}
               <div>
                 <p className="mb-1 text-sm font-medium">Notes</p>
@@ -357,74 +316,25 @@ export function MovieDetailDialog({
                   placeholder="e.g., Director's cut, Extended edition..."
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  className="w-full rounded-lg border border-input bg-background px-3 py-2.5 text-base text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                  className="h-12 w-full rounded-lg border border-input bg-background px-3 text-base text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                 />
               </div>
 
-              {PLATFORMS.map((platform) => {
-                const isSelected = platformSelections.some(
-                  (p) => p.platform === platform.id
-                );
-                const selection = platformSelections.find(
-                  (p) => p.platform === platform.id
-                );
+              <PlatformPicker
+                selections={platformSelections}
+                onChange={setPlatformSelections}
+              />
 
-                return (
-                  <div key={platform.id} className="space-y-1">
-                    <button
-                      onClick={() => togglePlatform(platform.id)}
-                      className={`flex w-full items-center gap-3 rounded-lg border p-3 text-left text-sm font-medium transition-colors ${
-                        isSelected
-                          ? `${platform.bgClass} ${platform.textClass} border-transparent`
-                          : "hover:bg-accent"
-                      }`}
-                    >
-                      <PlatformLogo
-                        platformId={platform.id}
-                        className="h-5 w-5 shrink-0"
-                      />
-                      {platform.label}
-                    </button>
-
-                    {isSelected && (
-                      <div className="flex gap-1 pl-3">
-                        {RESOLUTIONS.map((res) => (
-                          <button
-                            key={res}
-                            onClick={() => setResolution(platform.id, res)}
-                            className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
-                              selection?.resolution === res
-                                ? "bg-foreground text-background"
-                                : "border border-input text-muted-foreground hover:text-foreground"
-                            }`}
-                          >
-                            {res}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-
-              <div className="flex gap-2">
-                <Button
-                  className="flex-1"
-                  onClick={handleSave}
-                  disabled={saving}
-                >
+              {/* Stays visible at the bottom of the sheet while the list scrolls */}
+              <div className="sticky bottom-0 -mx-6 flex gap-2 bg-popover px-6 pb-1 pt-2">
+                <Button className="flex-1" onClick={handleSave} disabled={saving}>
                   {saving ? "Saving..." : "Save Changes"}
                 </Button>
                 <Button
                   variant="outline"
                   onClick={() => {
                     setEditing(false);
-                    setPlatformSelections(
-                      movie.platforms.map((p) => ({
-                        platform: p.platform,
-                        resolution: p.resolution || DEFAULT_RESOLUTION,
-                      }))
-                    );
+                    setPlatformSelections(toSelections(movie));
                     setNotes(movie.notes || "");
                   }}
                 >
@@ -440,28 +350,7 @@ export function MovieDetailDialog({
                   {movie.notes}
                 </p>
               )}
-              <div className="flex flex-wrap gap-1.5">
-                {sortPlatforms(movie.platforms).map((p) => {
-                  const config = getPlatform(p.platform);
-                  return (
-                    <span
-                      key={p.id}
-                      aria-label={config?.label || p.platform}
-                      className={`inline-flex items-center gap-1.5 rounded px-3 py-1.5 text-sm font-medium ${
-                        config
-                          ? `${config.bgClass} ${config.textClass}`
-                          : "bg-gray-500 text-white"
-                      }`}
-                    >
-                      <PlatformLogo
-                        platformId={p.platform}
-                        className="h-4 w-4 shrink-0"
-                      />
-                      {p.resolution && <span>{p.resolution}</span>}
-                    </span>
-                  );
-                })}
-              </div>
+              <PlatformChips platforms={movie.platforms} size="md" />
             </div>
           )}
         </div>
@@ -482,10 +371,7 @@ export function MovieDetailDialog({
                 >
                   {saving ? "Removing..." : "Yes, Remove"}
                 </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => setConfirmDelete(false)}
-                >
+                <Button variant="outline" onClick={() => setConfirmDelete(false)}>
                   Cancel
                 </Button>
               </div>
@@ -500,8 +386,7 @@ export function MovieDetailDialog({
             </Button>
           )}
         </div>
-        </div>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </ResponsiveModal>
   );
 }
