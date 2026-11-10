@@ -15,12 +15,15 @@ export function PlatformChips({
   size = "sm",
   showScope = false,
   linkTitle,
+  touchDevice = false,
   className = "",
 }: {
   platforms: OwnershipRow[];
   size?: "sm" | "md";
   showScope?: boolean;
   linkTitle?: string;
+  // Phones and tablets get the address that opens the store's app
+  touchDevice?: boolean;
   className?: string;
 }) {
   const chip =
@@ -48,7 +51,7 @@ export function PlatformChips({
           </>
         );
         const key = `${g.platform}-${g.resolution ?? ""}`;
-        const href = linkTitle ? getStoreLink(g.platform, linkTitle) : null;
+        const href = linkTitle ? getStoreLink(g.platform, linkTitle, { touchDevice }) : null;
 
         if (href) {
           return (
