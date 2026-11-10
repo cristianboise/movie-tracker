@@ -390,7 +390,13 @@ export function MovieDetailDialog({
               {summary && (
                 <p className="text-sm text-muted-foreground">{summary}</p>
               )}
-              <PlatformChips platforms={movie.platforms} size="md" showScope={isTv} />
+              <PlatformChips
+                platforms={movie.platforms}
+                size="md"
+                showScope={isTv}
+                linkTitle={movie.title}
+              />
+              <p className="text-xs text-muted-foreground">Tap a badge to open it in that store.</p>
             </div>
           )}
         </div>
