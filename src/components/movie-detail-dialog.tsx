@@ -17,6 +17,7 @@ import {
   type PlatformSelection,
 } from "@/lib/ownership";
 import { getPosterUrl } from "@/lib/tmdb-mappers";
+import { useMediaQuery } from "@/hooks/use-media-query";
 import { PlatformChips } from "@/components/platform-chips";
 import { PlatformPicker } from "@/components/platform-picker";
 import { entriesToRows } from "@/lib/library-cache";
@@ -67,6 +68,7 @@ export function MovieDetailDialog({
   onMovieUpdated: (id: number, patch: Partial<Movie>) => void;
   onMovieDeleted: (id: number) => void;
 }) {
+  const isTouchDevice = useMediaQuery("(pointer: coarse)");
   const [tmdbData, setTmdbData] = useState<TmdbData | null>(null);
   const [editing, setEditing] = useState(false);
   const [platformSelections, setPlatformSelections] = useState<PlatformSelection[]>([]);
@@ -395,6 +397,7 @@ export function MovieDetailDialog({
                 size="md"
                 showScope={isTv}
                 linkTitle={movie.title}
+                touchDevice={isTouchDevice}
               />
               <p className="text-xs text-muted-foreground">Tap a badge to open it in that store.</p>
             </div>

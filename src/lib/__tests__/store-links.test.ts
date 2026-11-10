@@ -25,6 +25,21 @@ describe("getStoreLink", () => {
     );
   });
 
+  it("uses Prime Video's app-link address on touch devices only", () => {
+    expect(getStoreLink("amazon", "The Abyss", { touchDevice: true })).toBe(
+      "https://app.primevideo.com/search?query=The%20Abyss"
+    );
+    expect(getStoreLink("amazon", "The Abyss", { touchDevice: false })).toBe(
+      "https://www.primevideo.com/search/?phrase=The%20Abyss"
+    );
+  });
+
+  it("gives the other stores the same link on every device", () => {
+    for (const id of ["apple", "fandango", "movies_anywhere"]) {
+      expect(getStoreLink(id, "The Abyss", { touchDevice: true })).toBe(getStoreLink(id, "The Abyss"));
+    }
+  });
+
   it("builds a title page link for Movies Anywhere", () => {
     expect(getStoreLink("movies_anywhere", "The Dark Knight")).toBe("https://moviesanywhere.com/movie/the-dark-knight");
     expect(getStoreLink("movies_anywhere", "!!!")).toBe("https://moviesanywhere.com/");
