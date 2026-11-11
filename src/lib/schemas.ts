@@ -70,3 +70,8 @@ export const tmdbIdQuerySchema = z.object({
     .positive("'id' must be positive"),
   type: mediaTypeSchema.default("movie"),
 });
+
+export const moviesAnywhereLinkQuerySchema = z.object({
+  title: z.string().trim().min(1, "Missing 'title' query parameter").max(300, "'title' is too long"),
+  year: z.coerce.number("'year' must be a number").int().min(1870).max(2200).optional(),
+});

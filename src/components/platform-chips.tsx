@@ -16,6 +16,7 @@ export function PlatformChips({
   showScope = false,
   linkTitle,
   touchDevice = false,
+  moviesAnywhereUrl,
   className = "",
 }: {
   platforms: OwnershipRow[];
@@ -24,6 +25,8 @@ export function PlatformChips({
   linkTitle?: string;
   // Phones and tablets get the address that opens the store's app
   touchDevice?: boolean;
+  // The checked Movies Anywhere address, once known (else a guess is used)
+  moviesAnywhereUrl?: string;
   className?: string;
 }) {
   const chip =
@@ -51,7 +54,7 @@ export function PlatformChips({
           </>
         );
         const key = `${g.platform}-${g.resolution ?? ""}`;
-        const href = linkTitle ? getStoreLink(g.platform, linkTitle, { touchDevice }) : null;
+        const href = linkTitle ? getStoreLink(g.platform, linkTitle, { touchDevice, moviesAnywhereUrl }) : null;
 
         if (href) {
           return (

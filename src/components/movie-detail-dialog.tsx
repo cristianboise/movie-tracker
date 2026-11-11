@@ -18,6 +18,7 @@ import {
 } from "@/lib/ownership";
 import { getPosterUrl } from "@/lib/tmdb-mappers";
 import { useMediaQuery } from "@/hooks/use-media-query";
+import { useMoviesAnywhereLink } from "@/hooks/use-movies-anywhere-link";
 import { PlatformChips } from "@/components/platform-chips";
 import { PlatformPicker } from "@/components/platform-picker";
 import { entriesToRows } from "@/lib/library-cache";
@@ -69,6 +70,11 @@ export function MovieDetailDialog({
   onMovieDeleted: (id: number) => void;
 }) {
   const isTouchDevice = useMediaQuery("(pointer: coarse)");
+  const moviesAnywhereUrl = useMoviesAnywhereLink(
+    movie?.title,
+    movie?.year,
+    open && !!movie?.platforms.some((p) => p.platform === "movies_anywhere")
+  );
   const [tmdbData, setTmdbData] = useState<TmdbData | null>(null);
   const [editing, setEditing] = useState(false);
   const [platformSelections, setPlatformSelections] = useState<PlatformSelection[]>([]);
@@ -398,6 +404,7 @@ export function MovieDetailDialog({
                 showScope={isTv}
                 linkTitle={movie.title}
                 touchDevice={isTouchDevice}
+                moviesAnywhereUrl={moviesAnywhereUrl}
               />
               <p className="text-xs text-muted-foreground">Tap a badge to open it in that store.</p>
             </div>

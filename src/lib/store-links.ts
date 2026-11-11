@@ -3,7 +3,9 @@
 // None of the stores (or TMDB) give us a link to an exact title, so:
 // - Apple, Prime Video and Fandango open the store's search for the title.
 // - Movies Anywhere has no search address, so we guess its title page from
-//   the name. A wrong guess lands on the Movies Anywhere home page.
+//   the name. A wrong guess lands on the home page on the website, but shows
+//   an error in the iPhone app, so the details screen looks up the real page
+//   (lib/movies-anywhere) and passes it in as `moviesAnywhereUrl`.
 //
 // What opens the store's app on iPhone and iPad (checked on a real iPhone):
 // - Apple and Movies Anywhere: the same address as on a computer.
@@ -27,7 +29,8 @@ export function getStoreLink(
   platformId: string,
   title: string,
   // True on phones and tablets, where the store's app is the better target
-  options: { touchDevice?: boolean } = {}
+  // `moviesAnywhereUrl`: the checked Movies Anywhere address, once known
+  options: { touchDevice?: boolean; moviesAnywhereUrl?: string } = {}
 ): string | null {
   const name = title.trim();
   if (!name) return null;
@@ -43,6 +46,7 @@ export function getStoreLink(
     case "fandango":
       return `https://athome.fandango.com/content/browse/search?searchString=${q}`;
     case "movies_anywhere": {
+      if (options.moviesAnywhereUrl) return options.moviesAnywhereUrl;
       const slug = moviesAnywhereSlug(name);
       return slug ? `https://moviesanywhere.com/movie/${slug}` : "https://moviesanywhere.com/";
     }
